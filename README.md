@@ -1,6 +1,6 @@
 # AI Secure Login Detection
 
-AI-powered suspicious login detection system that learns user behavior patterns and prevents unauthorized access in real-time.
+Suspicious login detection system that learns user behavior patterns and prevents unauthorized access in real-time.
 
 ## 🚀 Project Overview
 

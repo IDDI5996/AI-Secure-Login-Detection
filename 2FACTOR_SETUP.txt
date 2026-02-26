@@ -1,0 +1,602 @@
+NOW IT WORK CORRECTLY BUT WHY 'verification_method' => 'password_only', IN <?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
+use App\Models\LoginAttempt;
+use App\Models\VerificationAttempt;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
+use Stevebauman\Location\Facades\Location;
+use DeviceDetector\DeviceDetector;
+use DeviceDetector\Parser\Device\DeviceParserAbstract;
+
+
+class AuthenticatedSessionController extends Controller
+{
+    /**
+     * Display the login view.
+     */
+    public function create(): View
+    {
+        return view('auth.login');
+    }
+
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function store(LoginRequest $request): RedirectResponse
+    {
+        Log::info('🔐 Login process started', [
+            'email' => $request->email,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'time' => now()->toISOString()
+        ]);
+
+        // Get location data
+        $locationData = $this->getLocationData($request->ip());
+        
+        // Get device data
+        $deviceData = $this->getDeviceData($request->userAgent());
+
+        // Create login attempt BEFORE authentication
+        $loginAttempt = LoginAttempt::create([
+            'email' => $request->email,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'country' => $locationData['country'] ?? null,
+            'city' => $locationData['city'] ?? null,
+            'browser' => $deviceData['browser'] ?? null,
+            'platform' => $deviceData['platform'] ?? null,
+            'device_type' => $deviceData['device_type'] ?? null,
+            'is_successful' => false,
+            'is_suspicious' => false,
+            'risk_score' => 0.5,
+            'attempted_at' => now(),
+        ]);
+
+        Log::info('📝 Login attempt record created', [
+            'attempt_id' => $loginAttempt->id,
+            'email' => $loginAttempt->email,
+            'ip' => $loginAttempt->ip_address
+        ]);
+
+        try {
+            // Attempt authentication
+            $request->authenticate();
+
+            // Get the authenticated user
+            $user = Auth::user();
+            
+            Log::info('✅ Authentication successful', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name
+            ]);
+
+            // Calculate risk score (you can customize this)
+            $riskScore = $this->calculateRiskScore($user, $loginAttempt);
+
+            // Update login attempt with user info and risk assessment
+            $loginAttempt->update([
+                'user_id' => $user->id,
+                'is_successful' => true,
+                'risk_score' => $riskScore,
+                'is_suspicious' => $riskScore >= 0.7, // Mark as suspicious if high risk
+                'detection_factors' => $this->getDetectionFactors($user, $loginAttempt, $riskScore)
+            ]);
+
+            Log::info('📊 Login attempt updated', [
+                'attempt_id' => $loginAttempt->id,
+                'user_id' => $user->id,
+                'risk_score' => $riskScore,
+                'is_suspicious' => $loginAttempt->is_suspicious
+            ]);
+
+            // Create verification attempt
+            $verificationAttempt = VerificationAttempt::create([
+                'user_id' => $user->id,
+                'login_attempt_id' => $loginAttempt->id,
+                'verification_method' => 'password_only',
+                'is_successful' => true,
+                'verification_data' => [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'location' => $locationData['location_string'] ?? null,
+                    'device' => $deviceData['device_string'] ?? null,
+                    'method' => 'standard_login',
+                    'session_id' => session()->getId(),
+                    'timestamp' => now()->toISOString(),
+                    'risk_assessment' => [
+                        'score' => $riskScore,
+                        'is_suspicious' => $loginAttempt->is_suspicious
+                    ]
+                ],
+                'verified_at' => now()
+            ]);
+
+            Log::info('✅ Verification attempt created', [
+                'verification_id' => $verificationAttempt->id,
+                'login_attempt_id' => $loginAttempt->id,
+                'method' => $verificationAttempt->verification_method
+            ]);
+
+            // Clear rate limiter
+            RateLimiter::clear($request->throttleKey());
+
+            // Regenerate session
+            $request->session()->regenerate();
+
+            Log::info('🔄 Session regenerated, redirecting to dashboard', [
+                'user_id' => $user->id,
+                'session_id' => session()->getId()
+            ]);
+
+            return redirect()->intended(route('dashboard', absolute: false));
+
+        } catch (ValidationException $e) {
+            // Update login attempt as failed
+            $loginAttempt->update([
+                'is_successful' => false,
+                'risk_score' => 0.8, // High risk for failed
+                'detection_factors' => ['failed_authentication']
+            ]);
+
+            Log::warning('❌ Authentication failed', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+                'attempt_id' => $loginAttempt->id,
+                'errors' => $e->errors()
+            ]);
+            
+            throw $e;
+            
+        } catch (\Exception $e) {
+            // Update login attempt on any other error
+            $loginAttempt->update([
+                'is_successful' => false,
+                'risk_score' => 0.9,
+                'detection_factors' => ['system_error', $e->getMessage()]
+            ]);
+
+            Log::error('💥 Login process error', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+                'attempt_id' => $loginAttempt->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw $e;
+        }
+    }
+
+    /**
+     * Get location data from IP
+     */
+    private function getLocationData($ip)
+    {
+        try {
+            // Skip local IPs
+            if ($ip === '127.0.0.1' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.0.') === 0) {
+                return [
+                    'country' => 'Local',
+                    'city' => 'Local Network',
+                    'location_string' => 'Local Network'
+                ];
+            }
+
+            $location = Location::get($ip);
+            
+            if ($location) {
+                return [
+                    'country' => $location->countryName ?? null,
+                    'city' => $location->cityName ?? null,
+                    'location_string' => ($location->cityName ?? 'Unknown') . ', ' . ($location->countryName ?? 'Unknown')
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to get location data', ['ip' => $ip, 'error' => $e->getMessage()]);
+        }
+
+        return [
+            'country' => 'Unknown',
+            'city' => 'Unknown',
+            'location_string' => 'Unknown Location'
+        ];
+    }
+
+    /**
+     * Get device data from user agent
+     */
+    private function getDeviceData($userAgent)
+    {
+        try {
+            // Set up the device detector
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $dd = new DeviceDetector($userAgent);
+            $dd->parse();
+
+            $deviceType = 'Unknown';
+            if ($dd->isBot()) {
+                $deviceType = 'Bot';
+            } elseif ($dd->isDesktop()) {
+                $deviceType = 'Desktop';
+            } elseif ($dd->isTablet()) {
+                $deviceType = 'Tablet';
+            } elseif ($dd->isMobile()) {
+                $deviceType = 'Mobile';
+            }
+
+            return [
+                'browser' => $dd->getClient('name') ?? 'Unknown',
+                'platform' => $dd->getOs('name') ?? 'Unknown',
+                'device_type' => $deviceType,
+                'device_string' => ($deviceType !== 'Unknown' ? $deviceType . ' - ' : '') . 
+                                 ($dd->getClient('name') ?? 'Unknown') . ' on ' . 
+                                 ($dd->getOs('name') ?? 'Unknown')
+            ];
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse device data', ['user_agent' => $userAgent, 'error' => $e->getMessage()]);
+            
+            return [
+                'browser' => 'Unknown',
+                'platform' => 'Unknown',
+                'device_type' => 'Unknown',
+                'device_string' => 'Unknown Device'
+            ];
+        }
+    }
+
+    /**
+     * Calculate risk score for login attempt
+     */
+    private function calculateRiskScore($user, $loginAttempt)
+    {
+        $score = 0.1; // Base score for successful login
+        
+        // Check if unusual location (simplified)
+        $previousLogin = LoginAttempt::where('user_id', $user->id)
+            ->where('is_successful', true)
+            ->whereNotNull('country')
+            ->latest('attempted_at')
+            ->skip(1) // Skip the current one
+            ->first();
+            
+        if ($previousLogin && $previousLogin->country !== $loginAttempt->country) {
+            $score += 0.3; // Location change adds risk
+        }
+        
+        // Check if unusual device
+        $previousDevice = LoginAttempt::where('user_id', $user->id)
+            ->where('is_successful', true)
+            ->whereNotNull('device_type')
+            ->latest('attempted_at')
+            ->skip(1)
+            ->first();
+            
+        if ($previousDevice && $previousDevice->device_type !== $loginAttempt->device_type) {
+            $score += 0.2; // Device change adds risk
+        }
+        
+        // Cap at 0.95
+        return min($score, 0.95);
+    }
+
+    /**
+     * Get detection factors for suspicious activity
+     */
+    private function getDetectionFactors($user, $loginAttempt, $riskScore)
+    {
+        $factors = [];
+        
+        if ($riskScore >= 0.7) {
+            $factors[] = 'high_risk_login';
+        }
+        
+        // Check time of day (simplified - you can add more logic)
+        $hour = now()->hour;
+        if ($hour < 6 || $hour > 22) {
+            $factors[] = 'unusual_login_time';
+        }
+        
+        // Check if first login
+        $loginCount = LoginAttempt::where('user_id', $user->id)
+            ->where('is_successful', true)
+            ->count();
+            
+        if ($loginCount <= 1) {
+            $factors[] = 'first_login';
+        }
+        
+        return empty($factors) ? null : $factors;
+    }
+
+    /**
+     * Destroy an authenticated session.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        $userId = Auth::id();
+        $userEmail = Auth::user()?->email;
+        
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        Log::info('👋 User logged out', [
+            'user_id' => $userId,
+            'email' => $userEmail,
+            'time' => now()->toISOString()
+        ]);
+
+        return redirect('/');
+    }
+}
+
+
+
+TWO FACTOR AUTHENTICATION SETUP
+
+The `verification_method` is set to `'password_only'` because your system **doesn't actually have 2FA (Two-Factor Authentication) enabled** - users are logging in with just email and password.
+
+Here's why and how to make it more accurate:
+
+## Current Situation:
+1. Users have `two_factor_enabled: 1` in database (from seeder)
+2. But they don't have `two_factor_secret` set (no actual 2FA setup)
+3. So they login with just password → `'password_only'` verification
+
+## Options to Make It More Accurate:
+
+### Option 1: **Check if 2FA is Actually Configured**
+Modify the verification method based on user's actual 2FA status:
+
+```php
+// Replace line 78-79 in your controller:
+'verification_method' => 'password_only',
+
+// With this:
+'verification_method' => $this->getVerificationMethod($user),
+```
+
+Add this method to your controller:
+
+```php
+/**
+ * Determine verification method based on user settings
+ */
+private function getVerificationMethod($user)
+{
+    // Check if user has actual 2FA set up
+    if ($user->two_factor_enabled && $user->two_factor_secret) {
+        return '2fa'; // User has real 2FA enabled
+    }
+    
+    // Check if email is verified
+    if ($user->email_verified_at) {
+        return 'email_verified'; // Email is verified
+    }
+    
+    // Default to password only
+    return 'password_only';
+}
+```
+
+### Option 2: **Add More Context to Verification Data**
+Enhance the verification data with more details:
+
+```php
+// Replace the verification creation block (lines 77-96) with:
+
+$verificationMethod = $this->getVerificationMethod($user);
+$has2FA = $user->two_factor_enabled && $user->two_factor_secret;
+$hasEmailVerified = !empty($user->email_verified_at);
+
+// Create verification attempt
+$verificationAttempt = VerificationAttempt::create([
+    'user_id' => $user->id,
+    'login_attempt_id' => $loginAttempt->id,
+    'verification_method' => $verificationMethod,
+    'is_successful' => true,
+    'verification_data' => [
+        'ip_address' => $request->ip(),
+        'user_agent' => $request->userAgent(),
+        'location' => $locationData['location_string'] ?? null,
+        'device' => $deviceData['device_string'] ?? null,
+        'auth_method' => 'standard_login',
+        'auth_factors' => [
+            'password' => true,
+            '2fa_enabled' => $user->two_factor_enabled,
+            '2fa_configured' => !empty($user->two_factor_secret),
+            'email_verified' => $hasEmailVerified,
+            'actual_method_used' => $verificationMethod
+        ],
+        'session_id' => session()->getId(),
+        'timestamp' => now()->toISOString(),
+        'risk_assessment' => [
+            'score' => $riskScore,
+            'is_suspicious' => $loginAttempt->is_suspicious,
+            'factors' => $loginAttempt->detection_factors
+        ]
+    ],
+    'verified_at' => now()
+]);
+```
+
+### Option 3: **Different Methods for Different Scenarios**
+Create a more sophisticated verification method detector:
+
+```php
+private function getVerificationMethod($user, $request = null)
+{
+    $methods = [];
+    
+    // Always include password
+    $methods[] = 'password';
+    
+    // Check 2FA status
+    if ($user->two_factor_enabled) {
+        if ($user->two_factor_secret) {
+            $methods[] = '2fa_authenticator';
+        } else {
+            $methods[] = '2fa_required_not_configured';
+        }
+    }
+    
+    // Check email verification
+    if ($user->email_verified_at) {
+        $methods[] = 'email_verified';
+    }
+    
+    // Check for trusted device (you can implement this)
+    if ($this->isTrustedDevice($user, $request)) {
+        $methods[] = 'trusted_device';
+    }
+    
+    // Return as comma-separated or primary method
+    if (in_array('2fa_authenticator', $methods)) {
+        return '2fa_authenticator';
+    } elseif (in_array('email_verified', $methods)) {
+        return 'email_verified_password';
+    } else {
+        return 'password_only';
+    }
+}
+
+private function isTrustedDevice($user, $request)
+{
+    // Implement trusted device logic
+    // Check if this device/browser is in user's trusted devices
+    $trustedDevices = json_decode($user->trusted_devices ?? '[]', true);
+    
+    $currentDeviceHash = hash('sha256', 
+        $request->ip() . 
+        $request->userAgent() . 
+        ($request->header('User-Agent') ?? '')
+    );
+    
+    return in_array($currentDeviceHash, $trustedDevices);
+}
+```
+
+### Option 4: **Update User Seeder to Match Reality**
+Since users have `two_factor_enabled: 1` but no secret, update your seeder or database:
+
+```bash
+php artisan tinker
+```
+
+```php
+// Either disable 2FA (since it's not really used)
+\App\Models\User::query()->update(['two_factor_enabled' => 0]);
+echo "✅ Set two_factor_enabled to 0 for all users\n";
+
+// OR set actual 2FA secrets (if you want real 2FA)
+// This requires users to set up 2FA in authenticator app
+```
+
+### Option 5: **Simplest Fix - Change to 'standard_login'**
+Just change the method name to something more accurate:
+
+```php
+// Change from:
+'verification_method' => 'password_only',
+
+// To:
+'verification_method' => 'standard_login',
+// or
+'verification_method' => 'email_password',
+// or  
+'verification_method' => 'single_factor',
+```
+
+### Option 6: **Make It Dynamic Based on Your System**
+Check what authentication features your system actually has:
+
+```php
+private function getVerificationMethod($user)
+{
+    // Check your actual authentication flow
+    $features = [];
+    
+    // Does your system have Fortify/Jetstream 2FA?
+    if (class_exists(\Laravel\Fortify\Features::class)) {
+        $features[] = 'fortify_2fa';
+    }
+    
+    // Does your login page have 2FA challenge?
+    if (view()->exists('auth.two-factor-challenge')) {
+        $features[] = '2fa_challenge_view';
+    }
+    
+    // Based on actual features
+    if (in_array('2fa_challenge_view', $features) && 
+        $user->two_factor_enabled && 
+        $user->two_factor_secret) {
+        return '2fa_required';
+    }
+    
+    return 'password_based';
+}
+```
+
+## Recommended Solution:
+Since your system **shows 2FA as enabled in UI** but **doesn't actually require it**, use this approach:
+
+```php
+// In your controller, add this method:
+private function getVerificationMethod($user)
+{
+    $method = 'password';
+    
+    // Add context about 2FA status
+    if ($user->two_factor_enabled) {
+        if ($user->two_factor_secret) {
+            $method = '2fa_authenticator';
+        } else {
+            $method = 'password_2fa_pending'; // 2FA enabled but not set up
+        }
+    }
+    
+    // Add email verification status
+    if ($user->email_verified_at) {
+        $method .= '_email_verified';
+    }
+    
+    return $method;
+}
+```
+
+This will give you:
+- `password_email_verified` - for users with verified email
+- `password_2fa_pending_email_verified` - for users with 2FA enabled but not set up
+- `2fa_authenticator_email_verified` - for users with actual 2FA
+
+## For Your CSV Export:
+Update the CSV headers to be clearer:
+
+```php
+// In your exportCsv() method
+'Verification Method',
+'Verification Status',
+'Auth Factors', // Add this new column
+
+// In the row data
+$verificationMethod = $attempt->verificationAttempt->verification_method ?? 'password_only',
+$verificationStatus = $attempt->verificationAttempt ? 
+    ($attempt->verificationAttempt->is_successful ? 'Verified' : 'Failed') : 
+    'Not Required',
+$authFactors = isset($attempt->verificationAttempt->verification_data['auth_factors']) ? 
+    json_encode($attempt->verificationAttempt->verification_data['auth_factors']) : 
+    'password_only',
+```
+
+**Choose the option that best matches your actual system configuration.** If users are really only using password, `'password_only'` is technically correct. If you want it to reflect the UI (which shows 2FA as enabled), use Option 1 or 6.

@@ -1,5 +1,5 @@
 # ===============================
-# ZanHerb Laravel + Tailwind + Vite Dockerfile (no build inside)
+# SecureLoginDetection Laravel + Tailwind + Vite Dockerfile (no build inside)
 # ===============================
 
 # Use official PHP 8.2 image with Apache
@@ -10,8 +10,16 @@ FROM php:8.2-apache
 # -------------------------------
 RUN apt-get update && apt-get install -y \
     git zip unzip libpng-dev libonig-dev libxml2-dev \
-    libsqlite3-dev sqlite3 \
-    && docker-php-ext-install pdo pdo_mysql pdo_sqlite mbstring bcmath gd \
+    libsqlite3-dev sqlite3 libzip-dev \
+    && docker-php-ext-install \
+        pdo \
+        pdo_mysql \
+        pdo_sqlite \
+        mbstring \
+        bcmath \
+        gd \
+        zip \
+        xml \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite
@@ -41,7 +49,8 @@ RUN mkdir -p database \
 # Install Composer and Laravel dependencies
 # -------------------------------
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --optimize-autoloader --no-dev
+ENV COMPOSER_MEMORY_LIMIT=-1
+RUN composer install --no-dev --optimize-autoloader
 
 # -------------------------------
 # Set permissions (for SQLite + cache)

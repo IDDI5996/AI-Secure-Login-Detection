@@ -2,8 +2,8 @@
 # SecureLoginDetection Laravel + Tailwind + Vite Dockerfile (no build inside)
 # ===============================
 
-# Use official PHP 8.2 image with Apache
-FROM php:8.2-apache
+# Use official PHP 8.4 image with Apache
+FROM php:8.4-apache
 
 # -------------------------------
 # Install system dependencies

@@ -1,0 +1,28 @@
+{
+  "_charts-l0sNRNKZ.js": {
+    "file": "assets/charts-l0sNRNKZ.js",
+    "name": "charts"
+  },
+  "_vendor-Bq2KT4vH.js": {
+    "file": "assets/vendor-Bq2KT4vH.js",
+    "name": "vendor"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-CuL50QT2.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CY6FaZXM.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_vendor-Bq2KT4vH.js"
+    ]
+  }
+}

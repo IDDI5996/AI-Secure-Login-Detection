@@ -140,7 +140,7 @@
                                     </div>
                                     <input id="name" name="name" type="text" autocomplete="name" required
                                            class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition duration-200"
-                                           placeholder="John Doe" value="{{ old('name') }}">
+                                           placeholder="Modestus Ngimba" value="{{ old('name') }}">
                                 </div>
                                 @error('name')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>

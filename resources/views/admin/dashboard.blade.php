@@ -21,10 +21,12 @@
                     </button>
                     <div x-show="open" @click.away="open = false" 
                          class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
-                        <a href="{{ route('admin.settings') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                       
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             System Settings
                         </a>
-                        <a href="{{ route('admin.users') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                       
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             User Management
                         </a>
                         <a href="{{ route('admin.audit-log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -273,7 +275,7 @@
                                 </a>
                             @endif
                             
-                            <a href="{{ route('admin.users') }}" 
+                            <a href="#" 
                                class="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-150 group">
                                 <div class="flex items-center">
                                     <div class="bg-green-100 p-2 rounded-lg group-hover:bg-green-200 transition duration-150">

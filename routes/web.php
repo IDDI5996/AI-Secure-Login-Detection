@@ -8,6 +8,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Security\SecurityActionsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\DashboardController as MainDashboardController;
+use Illuminate\Http\Request;
 
 Route::get('/', function () {
     return view('welcome');

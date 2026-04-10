@@ -12,11 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Add TrustProxies to global middleware stack
+        $middleware->append(\App\Http\Middleware\TrustProxies::class);
+        
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
     })
-    
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

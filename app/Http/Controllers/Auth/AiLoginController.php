@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use App\Models\VerificationAttempt;
-use App\Services\AiDetectionEngin;
+use App\Services\AiDetectionEngine;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +18,7 @@ class AiLoginController extends Controller
 {
     protected $aiEngine;
     
-    public function __construct(AiDetectionEngin $aiEngine)
+    public function __construct(AiDetectionEngine $aiEngine)
     {
         $this->aiEngine = $aiEngine;
     }
@@ -33,20 +33,22 @@ class AiLoginController extends Controller
         $user = \App\Models\User::where('email', $request->email)->first();
         
         // Get real client IP before anything else
-        $realClientIp = $this->getRealClientIp($request);
+        $realIp = $this->getRealClientIp($request);
         
-        // Record login attempt with real IP
-        $loginAttempt = $this->recordLoginAttempt($user, $request, false, $realClientIp);
+        // Record login attempt before authentication (using real IP)
+        $loginAttempt = $this->recordLoginAttempt($user, $realIp, $request, false);
         
         if (!$user || !Hash::check($request->password, $user->password)) {
+            // Invalid credentials
             $loginAttempt->update(['is_successful' => false]);
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
         
-        // Analyze login with AI, passing the real client IP
-        $analysis = $this->aiEngine->analyzeLoginAttempt($user, $request, $realClientIp);
+        // Modify the request to use real IP for AI analysis
+        // We'll pass the real IP separately to the AI engine
+        $analysis = $this->aiEngine->analyzeLoginAttempt($user, $request, $realIp);
         
         // Update login attempt with analysis
         $loginAttempt->update([
@@ -56,8 +58,10 @@ class AiLoginController extends Controller
             'detection_factors' => $analysis['detection_factors']
         ]);
         
+        // If suspicious, require verification
         if ($analysis['is_suspicious']) {
             $this->handleSuspiciousLogin($user, $loginAttempt, $analysis);
+            
             return response()->json([
                 'requires_verification' => true,
                 'verification_methods' => $this->getAvailableVerificationMethods($user),
@@ -66,6 +70,7 @@ class AiLoginController extends Controller
             ]);
         }
         
+        // Normal login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
         return response()->json([
@@ -88,6 +93,7 @@ class AiLoginController extends Controller
         
         $isVerified = $this->verifyUser($user, $request->verification_method, $request->verification_code);
         
+        // Record verification attempt
         VerificationAttempt::create([
             'user_id' => $user->id,
             'login_attempt_id' => $loginAttempt->id,
@@ -97,14 +103,19 @@ class AiLoginController extends Controller
         ]);
         
         if ($isVerified) {
-            $suspiciousActivity = SuspiciousActivity::where('activity_data->login_attempt_id', $loginAttempt->id)->first();
+            // Mark suspicious activity as resolved
+            $suspiciousActivity = SuspiciousActivity::where('activity_data->login_attempt_id', $loginAttempt->id)
+                ->first();
+            
             if ($suspiciousActivity) {
                 $suspiciousActivity->update([
                     'status' => SuspiciousActivity::STATUS_RESOLVED,
                     'reviewed_at' => now()
                 ]);
             }
+            
             $this->handleSuccessfulLogin($user, $loginAttempt);
+            
             return response()->json([
                 'token' => $user->createToken('auth_token')->plainTextToken,
                 'user' => $user,
@@ -119,38 +130,49 @@ class AiLoginController extends Controller
     }
     
     /**
-     * Get the real client IP from trusted headers (Cloudflare, Render, etc.)
+     * Extract the real client IP from trusted headers (Cloudflare, Render, etc.)
      */
     private function getRealClientIp(Request $request): string
     {
+        // Check Cloudflare's CF-Connecting-IP header (most reliable)
         $ip = $request->header('CF-Connecting-IP');
+        
         if (!$ip) {
+            // Check True-Client-IP (also set by Cloudflare)
             $ip = $request->header('True-Client-IP');
         }
+        
         if (!$ip) {
+            // Check X-Forwarded-For (Render + Cloudflare)
             $forwardedFor = $request->header('X-Forwarded-For');
             if ($forwardedFor) {
+                // First IP in the list is the original client
                 $ips = explode(',', $forwardedFor);
                 $ip = trim($ips[0]);
             }
         }
+        
         if (!$ip) {
+            // Fallback to Laravel's default IP detection
             $ip = $request->ip();
         }
+        
+        // Basic IP validation
         if (!filter_var($ip, FILTER_VALIDATE_IP)) {
             $ip = $request->ip();
         }
+        
         return $ip;
     }
     
-    private function recordLoginAttempt($user, Request $request, $isSuccessful = false, ?string $realClientIp = null): LoginAttempt
+    private function recordLoginAttempt($user, string $realIp, Request $request, $isSuccessful = false): LoginAttempt
     {
-        $ip = $realClientIp ?? $this->getRealClientIp($request);
-        $location = $this->getLocationData($ip);
+        // Get location using the real IP
+        $location = $this->getLocationData($realIp);
         
         return LoginAttempt::create([
             'user_id' => $user?->id,
-            'ip_address' => $ip,
+            'ip_address' => $realIp,
             'user_agent' => $request->userAgent(),
             'country' => $location['country'] ?? null,
             'city' => $location['city'] ?? null,
@@ -180,6 +202,7 @@ class AiLoginController extends Controller
         
         $user->notify(new SuspiciousLoginNotification($loginAttempt));
         $user->notify(new VerificationRequiredNotification());
+        
         $this->notifyAdmins($user, $loginAttempt, $analysis);
         $this->updateBehaviorProfile($user, $loginAttempt);
     }
@@ -188,6 +211,7 @@ class AiLoginController extends Controller
     {
         $this->updateBehaviorProfile($user, $loginAttempt);
         $this->clearFailedAttempts($user);
+        
         \Log::info('User logged in', [
             'user_id' => $user->id,
             'ip' => $loginAttempt->ip_address,
@@ -205,6 +229,7 @@ class AiLoginController extends Controller
         ]);
     }
     
+    // ========== Helper methods (implement as needed) ==========
     private function getLocationData(string $ip): ?array
     {
         try {
@@ -224,73 +249,50 @@ class AiLoginController extends Controller
         return null;
     }
     
-    // Add stub methods for missing implementations (adjust as needed)
     private function parseBrowser($userAgent): string
     {
-        if (strpos($userAgent, 'Chrome') !== false) {
-            return 'Chrome';
-        }
-        if (strpos($userAgent, 'Firefox') !== false) {
-            return 'Firefox';
-        }
-        if (strpos($userAgent, 'Safari') !== false) {
-            return 'Safari';
-        }
-        if (strpos($userAgent, 'Edge') !== false) {
-            return 'Edge';
-        }
+        if (str_contains($userAgent, 'Chrome')) return 'Chrome';
+        if (str_contains($userAgent, 'Firefox')) return 'Firefox';
+        if (str_contains($userAgent, 'Safari')) return 'Safari';
+        if (str_contains($userAgent, 'Edge')) return 'Edge';
         return 'Unknown';
     }
     
     private function parsePlatform($userAgent): string
     {
-        if (strpos($userAgent, 'Windows') !== false) {
-            return 'Windows';
-        }
-        if (strpos($userAgent, 'Mac') !== false) {
-            return 'macOS';
-        }
-        if (strpos($userAgent, 'Linux') !== false) {
-            return 'Linux';
-        }
-        if (strpos($userAgent, 'Android') !== false) {
-            return 'Android';
-        }
-        if (strpos($userAgent, 'iPhone') !== false || strpos($userAgent, 'iPad') !== false) {
-            return 'iOS';
-        }
+        if (str_contains($userAgent, 'Windows')) return 'Windows';
+        if (str_contains($userAgent, 'Mac')) return 'macOS';
+        if (str_contains($userAgent, 'Linux')) return 'Linux';
+        if (str_contains($userAgent, 'Android')) return 'Android';
+        if (str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')) return 'iOS';
         return 'Unknown';
     }
     
     private function parseDeviceType($userAgent): string
     {
-        if (strpos($userAgent, 'Mobile') !== false) {
-            return 'Mobile';
-        }
-        if (strpos($userAgent, 'Tablet') !== false) {
-            return 'Tablet';
-        }
+        if (str_contains($userAgent, 'Mobile')) return 'Mobile';
+        if (str_contains($userAgent, 'Tablet')) return 'Tablet';
         return 'Desktop';
     }
     
     private function getAvailableVerificationMethods($user): array
     {
-        return ['2fa', 'email', 'security_questions'];
+        return ['2fa', 'email'];
     }
     
     private function verifyUser($user, $method, $code): bool
     {
         // Implement actual verification logic
-        return true; // Placeholder
+        return true;
     }
     
     private function notifyAdmins($user, $loginAttempt, $analysis): void
     {
-        // Implement admin notifications
+        // Implement admin notification logic
     }
     
     private function clearFailedAttempts($user): void
     {
-        // Implement clearing failed attempts
+        // Implement clearing logic
     }
 }

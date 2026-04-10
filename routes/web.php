@@ -92,6 +92,22 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+
+Route::middleware(['auth'])->get('/debug-ip', function (Request $request) {
+    return response()->json([
+        'request_ip' => $request->ip(),
+        'server_remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
+        'headers' => [
+            'x-forwarded-for' => $request->header('X-Forwarded-For'),
+            'x-real-ip' => $request->header('X-Real-IP'),
+            'true-client-ip' => $request->header('True-Client-IP'),
+            'cf-connecting-ip' => $request->header('CF-Connecting-IP'),
+            'x-original-forwarded-for' => $request->header('X-Original-Forwarded-For'),
+        ],
+        'all_headers' => $request->headers->all(),
+    ]);
+});
+
 // Logout
 Route::post('/logout', function () {
     Auth::logout();

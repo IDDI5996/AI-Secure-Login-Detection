@@ -1,10 +1,5 @@
 <?php
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Scripting/PHPClass.php to edit this template
- */
-
 namespace App\Services;
 
 use App\Models\User;
@@ -13,29 +8,34 @@ use App\Models\UserBehaviorProfile;
 use Illuminate\Support\Facades\Cache;
 use Stevebauman\Location\Facades\Location;
 use Illuminate\Http\Request;
-/**
- * Description of AiDetectionEngin
- *
- * @author IDRISAH
- */
-class AiDetectionEngin {
+
+class AiDetectionEngin
+{
     private $riskFactors = [];
     private $riskScore = 0.0;
     private $detectionReasons = [];
 
-    public function analyzeLoginAttempt(User $user, Request $request): array
+    /**
+     * Analyze login attempt with real client IP
+     */
+    public function analyzeLoginAttempt(User $user, Request $request, string $realClientIp = null): array
     {
         $this->resetAnalysis();
+        
+        // If real client IP not provided, try to extract from request
+        if (!$realClientIp) {
+            $realClientIp = $this->getRealClientIp($request);
+        }
         
         // Get or create user behavior profile
         $profile = $this->getUserProfile($user);
         
-        // Analyze various factors
-        $this->analyzeLocation($user, $request, $profile);
+        // Analyze various factors using real IP
+        $this->analyzeLocation($user, $request, $profile, $realClientIp);
         $this->analyzeDevice($user, $request, $profile);
         $this->analyzeTimePattern($user, $profile);
         $this->analyzeVelocity($user);
-        $this->analyzeIpReputation($request);
+        $this->analyzeIpReputation($request, $realClientIp);
         
         // Calculate final risk score (0.0 to 1.0)
         $this->calculateRiskScore();
@@ -48,17 +48,41 @@ class AiDetectionEngin {
         ];
     }
 
-    private function analyzeLocation($user, $request, $profile): void
+    /**
+     * Extract real client IP from headers (Cloudflare, Render, etc.)
+     */
+    private function getRealClientIp(Request $request): string
     {
-        $ip = $request->ip();
-        $location = $this->getLocationFromIp($ip);
+        $ip = $request->header('CF-Connecting-IP');
+        if (!$ip) {
+            $ip = $request->header('True-Client-IP');
+        }
+        if (!$ip) {
+            $forwardedFor = $request->header('X-Forwarded-For');
+            if ($forwardedFor) {
+                $ips = explode(',', $forwardedFor);
+                $ip = trim($ips[0]);
+            }
+        }
+        if (!$ip) {
+            $ip = $request->ip();
+        }
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $ip = $request->ip();
+        }
+        return $ip;
+    }
+
+    private function analyzeLocation($user, $request, $profile, string $realClientIp): void
+    {
+        $location = $this->getLocationFromIp($realClientIp);
         
         $factorWeight = 0.3;
         $locationRisk = 0.0;
         
         if ($location) {
             // Check if location is in usual locations
-            $isUsualLocation = $this->checkUsualLocation($profile, $location, $ip);
+            $isUsualLocation = $this->checkUsualLocation($profile, $location, $realClientIp);
             
             if (!$isUsualLocation) {
                 $locationRisk = 0.8;
@@ -98,14 +122,28 @@ class AiDetectionEngin {
         // Check against usual devices
         $usualDevices = $profile->device_fingerprints ?? [];
         
-        if (!empty($usualDevices) && !in_array($deviceFingerprint, $usualDevices)) {
+        // For device fingerprint, we need to compare properly (usualDevices might be array of arrays)
+        $isKnownDevice = false;
+        if (!empty($usualDevices)) {
+            foreach ($usualDevices as $device) {
+                if (is_array($device) && isset($device['fingerprint']) && $device['fingerprint'] === $deviceFingerprint) {
+                    $isKnownDevice = true;
+                    break;
+                } elseif (is_string($device) && $device === $deviceFingerprint) {
+                    $isKnownDevice = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!empty($usualDevices) && !$isKnownDevice) {
             $deviceRisk = 0.7;
             $this->detectionReasons[] = "Login from unrecognized device";
             
             // Check if device type is different
             if (!empty($usualDevices)) {
-                $lastDevice = end($usualDevices);
-                if ($this->parseDeviceType($lastDevice['user_agent']) !== $deviceType) {
+                $lastDevice = is_array($usualDevices[0]) ? $usualDevices[0] : ['user_agent' => ''];
+                if ($this->parseDeviceType($lastDevice['user_agent'] ?? '') !== $deviceType) {
                     $deviceRisk = 0.9;
                     $this->detectionReasons[] = "Login from different device type";
                 }
@@ -199,14 +237,13 @@ class AiDetectionEngin {
         ];
     }
 
-    private function analyzeIpReputation($request): void
+    private function analyzeIpReputation($request, string $realClientIp): void
     {
-        $ip = $request->ip();
         $factorWeight = 0.1;
         $reputationRisk = 0.0;
         
-        // Check if IP is from known VPN/Tor/proxy
-        $isSuspiciousIp = $this->checkIpReputation($ip);
+        // Check if IP is from known VPN/Tor/proxy using real IP
+        $isSuspiciousIp = $this->checkIpReputation($realClientIp);
         
         if ($isSuspiciousIp) {
             $reputationRisk = 1.0;
@@ -214,7 +251,7 @@ class AiDetectionEngin {
         }
         
         // Check if IP is from high-risk country
-        $location = $this->getLocationFromIp($ip);
+        $location = $this->getLocationFromIp($realClientIp);
         if ($location && $this->isHighRiskCountry($location['country'])) {
             $reputationRisk = max($reputationRisk, 0.8);
             $this->detectionReasons[] = "Login from high-risk country";
@@ -224,7 +261,7 @@ class AiDetectionEngin {
             'weight' => $factorWeight,
             'risk' => $reputationRisk,
             'data' => [
-                'ip' => $ip,
+                'ip' => $realClientIp,
                 'is_suspicious' => $isSuspiciousIp,
                 'country_risk' => $location['country'] ?? 'unknown'
             ]
@@ -249,7 +286,13 @@ class AiDetectionEngin {
         $this->riskScore = min(1.0, max(0.0, $this->riskScore + $mlAdjustment));
     }
 
-    // Helper methods
+    private function resetAnalysis(): void
+    {
+        $this->riskFactors = [];
+        $this->riskScore = 0.0;
+        $this->detectionReasons = [];
+    }
+
     private function getUserProfile(User $user): UserBehaviorProfile
     {
         return UserBehaviorProfile::firstOrCreate(
@@ -264,7 +307,7 @@ class AiDetectionEngin {
             $request->userAgent(),
             $request->header('Accept-Language'),
             $request->header('Accept-Encoding'),
-            $request->ip()
+            $request->ip() // This is fine for device fingerprinting, not for location
         ];
         
         return hash('sha256', implode('|', $components));
@@ -285,7 +328,6 @@ class AiDetectionEngin {
                     ];
                 }
             } catch (\Exception $e) {
-                // Log error
                 \Log::error("Location lookup failed for IP {$ip}: " . $e->getMessage());
             }
             return null;
@@ -295,12 +337,9 @@ class AiDetectionEngin {
     private function checkIpReputation(string $ip): bool
     {
         // Implement IP reputation check
-        // You can integrate with services like AbuseIPDB, IPQualityScore, etc.
-        // For now, checking common VPN/proxy patterns
         $vpnRanges = [
             '103.21.244.0/22',
             '103.22.200.0/22',
-            // Add more ranges
         ];
         
         foreach ($vpnRanges as $range) {
@@ -312,10 +351,99 @@ class AiDetectionEngin {
         return false;
     }
 
+    private function ipInRange(string $ip, string $range): bool
+    {
+        list($subnet, $mask) = explode('/', $range);
+        $ipLong = ip2long($ip);
+        $subnetLong = ip2long($subnet);
+        $maskLong = ~((1 << (32 - $mask)) - 1);
+        return ($ipLong & $maskLong) == ($subnetLong & $maskLong);
+    }
+
+    private function checkUsualLocation($profile, $location, string $ip): bool
+    {
+        $usualLocations = $profile->usual_locations ?? [];
+        if (empty($usualLocations)) {
+            return true; // First login, treat as usual
+        }
+        
+        $ipRange = substr($ip, 0, strrpos($ip, '.'));
+        foreach ($usualLocations as $usual) {
+            if (isset($usual['ip_range']) && $usual['ip_range'] === $ipRange) {
+                return true;
+            }
+            if (isset($usual['country']) && $usual['country'] === $location['country'] &&
+                isset($usual['city']) && $usual['city'] === $location['city']) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function updateDeviceProfile($profile, string $fingerprint, array $deviceInfo): void
+    {
+        $devices = $profile->device_fingerprints ?? [];
+        $devices[] = array_merge(['fingerprint' => $fingerprint], $deviceInfo);
+        $profile->device_fingerprints = $devices;
+        $profile->save();
+    }
+
+    private function parseBrowser($userAgent): string
+    {
+        if (strpos($userAgent, 'Chrome') !== false) {
+            return 'Chrome';
+        }
+        if (strpos($userAgent, 'Firefox') !== false) {
+            return 'Firefox';
+        }
+        if (strpos($userAgent, 'Safari') !== false) {
+            return 'Safari';
+        }
+        if (strpos($userAgent, 'Edge') !== false) {
+            return 'Edge';
+        }
+        return 'Unknown';
+    }
+
+    private function parsePlatform($userAgent): string
+    {
+        if (strpos($userAgent, 'Windows') !== false) {
+            return 'Windows';
+        }
+        if (strpos($userAgent, 'Mac') !== false) {
+            return 'macOS';
+        }
+        if (strpos($userAgent, 'Linux') !== false) {
+            return 'Linux';
+        }
+        if (strpos($userAgent, 'Android') !== false) {
+            return 'Android';
+        }
+        if (strpos($userAgent, 'iPhone') !== false || strpos($userAgent, 'iPad') !== false) {
+            return 'iOS';
+        }
+        return 'Unknown';
+    }
+
+    private function parseDeviceType($userAgent): string
+    {
+        if (strpos($userAgent, 'Mobile') !== false) {
+            return 'Mobile';
+        }
+        if (strpos($userAgent, 'Tablet') !== false) {
+            return 'Tablet';
+        }
+        return 'Desktop';
+    }
+
+    private function isHighRiskCountry(string $country): bool
+    {
+        $highRisk = ['CN', 'RU', 'KP', 'IR', 'SY', 'CU', 'VE'];
+        return in_array(strtoupper($country), $highRisk);
+    }
+
     private function getMlAdjustment(): float
     {
-        // Placeholder for ML model integration
-        // Could use TensorFlow PHP, PyTorch via API, or custom algorithm
         return 0.0;
     }
 }

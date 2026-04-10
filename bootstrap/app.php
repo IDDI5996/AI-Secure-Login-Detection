@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Add TrustProxies to the global stack
+        // IMPORTANT: SetRealClientIp must run before TrustProxies
+        $middleware->prepend(\App\Http\Middleware\SetRealClientIp::class);
         $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
         
         $middleware->alias([

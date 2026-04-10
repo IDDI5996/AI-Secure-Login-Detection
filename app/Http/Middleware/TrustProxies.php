@@ -27,36 +27,27 @@ class TrustProxies extends Middleware
      * @param  \Illuminate\Http\Request  $request
      * @return string|null
      */
-    protected function getIp(Request $request)
-    {
-        // Check for Cloudflare's CF-Connecting-IP header (most reliable)
-        $ip = $request->header('CF-Connecting-IP');
-        
-        if (!$ip) {
-            // Check for True-Client-IP header (also set by Cloudflare)
-            $ip = $request->header('True-Client-IP');
-        }
-        
-        if (!$ip) {
-            // Check X-Forwarded-For header (Render + Cloudflare)
-            $forwardedFor = $request->header('X-Forwarded-For');
-            if ($forwardedFor) {
-                // The first IP in the list is the original client
-                $ips = explode(',', $forwardedFor);
-                $ip = trim($ips[0]);
-            }
-        }
-        
-        if (!$ip) {
-            // Fall back to Laravel's default IP detection
-            $ip = parent::getIp($request);
-        }
-        
-        // Validate IP format (basic)
-        if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
-            return $ip;
-        }
-        
-        return null;
+    public function ip()
+{
+    // Check for Cloudflare header
+    $ip = $this->header('CF-Connecting-IP');
+    
+    if (!$ip) {
+        $ip = $this->header('True-Client-IP');
     }
+    
+    if (!$ip) {
+        $forwardedFor = $this->header('X-Forwarded-For');
+        if ($forwardedFor) {
+            $ips = explode(',', $forwardedFor);
+            $ip = trim($ips[0]);
+        }
+    }
+    
+    if (!$ip) {
+        $ip = parent::ip();
+    }
+    
+    return $ip;
+}
 }

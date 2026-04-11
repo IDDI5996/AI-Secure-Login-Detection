@@ -9,6 +9,9 @@ use App\Http\Controllers\Security\SecurityActionsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\DashboardController as MainDashboardController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Lecturer\NoteController as LecturerNoteController;
+use App\Http\Controllers\Student\NoteController as StudentNoteController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -93,6 +96,17 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+
+// Student Portal (for role 'user')
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/student/dashboard', [StudentNoteController::class, 'dashboard'])->name('student.dashboard');
+    Route::get('/student/course/{course}', [StudentNoteController::class, 'courseNotes'])->name('student.course-notes');
+    Route::get('/student/download/{note}', [StudentNoteController::class, 'download'])->name('student.download');
+});
+
+Route::middleware(['auth', 'lecturer'])->prefix('lecturer')->name('lecturer.')->group(function () {
+    Route::resource('notes', LecturerNoteController::class)->except(['show']);
+});
 
 Route::middleware(['auth'])->get('/debug-ip', function (Request $request) {
     return response()->json([

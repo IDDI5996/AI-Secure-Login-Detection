@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use Carbon\Carbon;
+use App\Models\Course;
+use App\Models\Note;
 
 class DashboardController extends Controller
 {
@@ -25,6 +27,9 @@ class DashboardController extends Controller
         elseif ($user->role === 'security_analyst') {
             return $this->securityAnalystDashboard($user);
         } 
+        elseif ($user->role === 'lecturer') {
+            return redirect()->route('lecturer.notes.index');
+        }
         else {
             return $this->userDashboard($user);
         }
@@ -84,19 +89,16 @@ class DashboardController extends Controller
 
     private function userDashboard($user)
     {
-        $recentLogins = LoginAttempt::where('user_id', $user->id)
-            ->orderBy('attempted_at', 'desc')
-            ->limit(10)
-            ->get();
+        $courses = Course::withCount(['notes' => function ($q) {
+        $q->where('is_active', true);
+    }])->orderBy('code')->get();
 
-        $suspiciousCount = LoginAttempt::where('user_id', $user->id)
-            ->where('is_suspicious', true)
-            ->whereDate('attempted_at', '>=', Carbon::today()->subDays(30))
-            ->count();
+    $recentNotes = Note::where('is_active', true)
+        ->with('course')
+        ->latest()
+        ->limit(5)
+        ->get();
 
-        $devices = $user->behaviorProfile->device_fingerprints ?? [];
-
-        // Redirect to resources/views/user/dashboard.blade.php
-        return view('user.dashboard', compact('recentLogins', 'suspiciousCount', 'devices'));
+    return view('student.dashboard', compact('courses', 'recentNotes'));
     }
 }

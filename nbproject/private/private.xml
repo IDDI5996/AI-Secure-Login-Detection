@@ -63,6 +63,32 @@
             <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/admin/suspicious-activities.blade.php</file>
             <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/Security/SecurityActionsController.php</file>
             <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/security/dashboard.blade.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Providers/JetstreamServiceProvider.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Middleware/TrustProxies.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Middleware/SetRealClientIp.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/student/dashboard.blade.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/database/seeders/LecturerUserSeeder.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/.env</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/.env.example</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Middleware/LecturerMiddleware.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/Lecturer/NoteController.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/lecturer/notes/index.blade.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/lecturer/notes/create.blade.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/database/migrations/2026_04_10_220602_create_courses_table.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/database/migrations/2026_04_10_220612_create_notes_table.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/database/seeders/SemesterTwoCoursesSeeder.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Models/Course.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Models/Note.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/Student/NoteController.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/student/course-notes.blade.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/Auth/AuthenticatedSessionController.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Requests/Auth/LoginRequest.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/config/auth.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/AuditLogController.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Http/Controllers/ProfileController.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/config/database.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/app/Policies/TeamPolicy.php</file>
+            <file>file:/F:/xampp/htdocs/AI-Powered/resources/views/lecturer/notes/edit.blade.php</file>
         </group>
     </open-files>
 </project-private>

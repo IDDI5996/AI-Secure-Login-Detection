@@ -2,7 +2,7 @@
     <div class="min-h-screen flex">
         <!-- Left side - Illustration -->
         <div class="hidden lg:block relative w-0 flex-1">
-            <div class="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800">
                 <!-- Animated Background -->
                 <div class="absolute inset-0 overflow-hidden">
                     <div class="absolute -top-20 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
@@ -14,19 +14,19 @@
                 <div class="relative h-full flex items-center justify-center p-12">
                     <div class="max-w-lg">
                         <div class="text-center">
-                            <!-- Animated Checkmark -->
+                            <!-- Animated Book Icon -->
                             <div class="relative inline-block mb-8">
                                 <div class="absolute inset-0 bg-green-400/30 rounded-full animate-ping"></div>
                                 <div class="relative h-32 w-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
                                     <svg class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
-                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                     </svg>
                                 </div>
                             </div>
 
                             <!-- Benefits -->
-                            <h3 class="text-2xl font-bold text-white mb-6">Start Your Free Trial</h3>
+                            <h3 class="text-2xl font-bold text-white mb-6">Join Our Learning Community</h3>
                             
                             <div class="space-y-6 text-left">
                                 <div class="flex items-start">
@@ -38,8 +38,8 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <h4 class="text-lg font-semibold text-white">14-Day Free Trial</h4>
-                                        <p class="text-white/80 text-sm mt-1">Full access to all features, no credit card required</p>
+                                        <h4 class="text-lg font-semibold text-white">Free Access</h4>
+                                        <p class="text-white/80 text-sm mt-1">Access all course materials at no cost</p>
                                     </div>
                                 </div>
                                 
@@ -52,8 +52,8 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <h4 class="text-lg font-semibold text-white">AI-Powered Security</h4>
-                                        <p class="text-white/80 text-sm mt-1">Advanced machine learning algorithms</p>
+                                        <h4 class="text-lg font-semibold text-white">Study Resources</h4>
+                                        <p class="text-white/80 text-sm mt-1">Lecture notes, assignments, and past papers</p>
                                     </div>
                                 </div>
                                 
@@ -66,25 +66,33 @@
                                         </div>
                                     </div>
                                     <div class="ml-4">
-                                        <h4 class="text-lg font-semibold text-white">Real-time Monitoring</h4>
-                                        <p class="text-white/80 text-sm mt-1">Instant alerts and automated responses</p>
+                                        <h4 class="text-lg font-semibold text-white">Secure Platform</h4>
+                                        <p class="text-white/80 text-sm mt-1">Your account is protected with advanced security</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Testimonials -->
-                            <div class="mt-12 p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                                            <span class="text-white font-bold">JD</span>
-                                        </div>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-white italic">"Reduced suspicious logins by 98% in the first month."</p>
-                                        <p class="text-white/70 text-sm mt-1">John Doe, Security Director</p>
-                                    </div>
+                            <!-- Stats -->
+                            <div class="grid grid-cols-3 gap-4 mt-12">
+                                <div class="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
+                                    <div class="text-2xl font-bold text-white">50+</div>
+                                    <div class="text-xs text-white/70 mt-1">Course Materials</div>
                                 </div>
+                                <div class="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
+                                    <div class="text-2xl font-bold text-white">24/7</div>
+                                    <div class="text-xs text-white/70 mt-1">Access Available</div>
+                                </div>
+                                <div class="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
+                                    <div class="text-2xl font-bold text-white">100%</div>
+                                    <div class="text-xs text-white/70 mt-1">Free Access</div>
+                                </div>
+                            </div>
+
+                            <!-- Security Notice -->
+                            <div class="mt-8 p-3 bg-yellow-500/20 backdrop-blur-sm rounded-lg border border-yellow-400/30">
+                                <p class="text-xs text-yellow-100">
+                                    ⚠️ This is a student academic portal. Do not enter sensitive personal passwords used elsewhere.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -93,32 +101,44 @@
         </div>
 
         <!-- Right side - Form -->
-        <div class="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+        <div class="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 bg-white">
             <div class="mx-auto w-full max-w-sm lg:w-96">
                 <!-- Logo & Header -->
                 <div class="text-center lg:text-left">
                     <div class="flex items-center justify-center lg:justify-start mb-8">
-                        <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg">
+                        <div class="h-12 w-12 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg">
                             <svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
                         <div class="ml-3">
-                            <span class="text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                                AISecure
+                            <span class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                                Smart Student Portal
                             </span>
-                            <span class="text-xs font-medium text-gray-500 block">Login Detection</span>
+                            <span class="text-xs font-medium text-gray-500 block">Your Academic Hub</span>
                         </div>
                     </div>
                     
                     <h2 class="text-3xl font-extrabold text-gray-900">
-                        Start your free trial
+                        Create your account
                     </h2>
                     <p class="mt-2 text-sm text-gray-600">
-                        No credit card required • 14-day free trial
+                        Join our learning community today
                     </p>
                 </div>
+
+                <!-- Validation Errors -->
+                @if ($errors->any())
+                    <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 text-red-700 rounded-r-lg">
+                        <div class="font-medium">Whoops! Something went wrong.</div>
+                        <ul class="mt-2 list-disc list-inside text-sm">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 <!-- Registration Form -->
                 <div class="mt-8">
@@ -139,12 +159,9 @@
                                         </svg>
                                     </div>
                                     <input id="name" name="name" type="text" autocomplete="name" required
-                                           class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition duration-200"
+                                           class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition duration-200"
                                            placeholder="Modestus Ngimba" value="{{ old('name') }}">
                                 </div>
-                                @error('name')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
                             </div>
 
                             <!-- Email Field -->
@@ -160,12 +177,9 @@
                                         </svg>
                                     </div>
                                     <input id="email" name="email" type="email" autocomplete="email" required
-                                           class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition duration-200"
-                                           placeholder="you@company.com" value="{{ old('email') }}">
+                                           class="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition duration-200"
+                                           placeholder="you@university.edu" value="{{ old('email') }}">
                                 </div>
-                                @error('email')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
                             </div>
 
                             <!-- Password Field -->
@@ -181,7 +195,7 @@
                                         </svg>
                                     </div>
                                     <input id="password" name="password" type="password" autocomplete="new-password" required
-                                           class="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition duration-200"
+                                           class="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition duration-200"
                                            placeholder="••••••••">
                                     <button type="button" onclick="togglePassword('password')" 
                                             class="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -193,23 +207,23 @@
                                         </svg>
                                     </button>
                                 </div>
-                                <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
-                                    <div class="flex items-center text-gray-500">
-                                        <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        8+ characters
-                                    </div>
-                                    <div class="flex items-center text-gray-500">
-                                        <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Letters & numbers
+                                <div class="mt-2">
+                                    <div class="password-strength-indicator"></div>
+                                    <div class="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-500">
+                                        <div class="flex items-center">
+                                            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            8+ characters
+                                        </div>
+                                        <div class="flex items-center">
+                                            <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Letters & numbers
+                                        </div>
                                     </div>
                                 </div>
-                                @error('password')
-                                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
                             </div>
 
                             <!-- Confirm Password Field -->
@@ -225,7 +239,7 @@
                                         </svg>
                                     </div>
                                     <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required
-                                           class="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition duration-200"
+                                           class="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm transition duration-200"
                                            placeholder="••••••••">
                                     <button type="button" onclick="togglePassword('password_confirmation')" 
                                             class="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -243,16 +257,16 @@
                             <div class="flex items-start">
                                 <div class="flex items-center h-5">
                                     <input id="terms" name="terms" type="checkbox" required
-                                           class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
                                 </div>
                                 <div class="ml-3">
                                     <label for="terms" class="text-sm text-gray-600">
                                         I agree to the
-                                        <a href="#" class="font-medium text-primary-600 hover:text-primary-500">
+                                        <a href="#" class="font-medium text-purple-600 hover:text-purple-500">
                                             Terms of Service
                                         </a>
                                         and
-                                        <a href="#" class="font-medium text-primary-600 hover:text-primary-500">
+                                        <a href="#" class="font-medium text-purple-600 hover:text-purple-500">
                                             Privacy Policy
                                         </a>
                                     </label>
@@ -262,13 +276,13 @@
                             <!-- Submit Button -->
                             <div>
                                 <button type="submit"
-                                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-300 transform hover:-translate-y-0.5">
+                                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300 transform hover:-translate-y-0.5">
                                     <span class="flex items-center">
                                         <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                                   d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                         </svg>
-                                        Create free account
+                                        Create Account
                                     </span>
                                 </button>
                             </div>
@@ -288,16 +302,15 @@
                     </div>
 
                     <!-- Social Registration -->
-                    <div class="mt-6 grid grid-cols-2 gap-3">
-                        <a href="#" class="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    <div class="mt-6">
+                        <a href="#" class="w-full inline-flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                             </svg>
-                        </a>
-                        <a href="#" class="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M23.954 11.629c-.885.389-1.83.654-2.825.775 1.014-.611 1.794-1.574 2.163-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-2.717 0-4.92 2.203-4.92 4.917 0 .39.045.765.127 1.124-4.09-.205-7.719-2.165-10.148-5.144-.424.722-.666 1.561-.666 2.475 0 1.71.87 3.213 2.188 4.096-.807-.026-1.566-.248-2.228-.616v.061c0 2.385 1.693 4.374 3.946 4.827-.413.111-.849.171-1.296.171-.314 0-.615-.03-.916-.086.631 1.953 2.445 3.377 4.604 3.417-1.68 1.319-3.809 2.105-6.102 2.105-.397 0-.79-.023-1.177-.067 2.179 1.397 4.768 2.212 7.548 2.212 9.054 0 14-7.496 14-13.986 0-.209 0-.42-.015-.63.961-.689 1.8-1.56 2.46-2.548l-.047-.02z"/>
-                            </svg>
+                            <span>Continue with Google</span>
                         </a>
                     </div>
 
@@ -306,24 +319,10 @@
                         <p class="text-sm text-gray-600">
                             Already have an account?
                             <a href="{{ route('login') }}" 
-                               class="font-medium text-primary-600 hover:text-primary-500 ml-1">
+                               class="font-medium text-purple-600 hover:text-purple-500 ml-1">
                                 Sign in here
                             </a>
                         </p>
-                    </div>
-
-                    <!-- Security Note -->
-                    <div class="mt-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg">
-                        <div class="flex items-start">
-                            <svg class="h-5 w-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            <div>
-                                <p class="text-sm font-medium text-green-800">Enterprise-grade security</p>
-                                <p class="text-xs text-green-700 mt-1">Your data is encrypted and protected with AI-powered security measures.</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -349,27 +348,33 @@
         }
 
         // Password strength indicator
-        document.getElementById('password').addEventListener('input', function(e) {
-            const password = e.target.value;
-            const strength = calculatePasswordStrength(password);
-            updateStrengthIndicator(strength);
-        });
-
-        function calculatePasswordStrength(password) {
-            let strength = 0;
-            if (password.length >= 8) strength++;
-            if (/[A-Z]/.test(password)) strength++;
-            if (/[a-z]/.test(password)) strength++;
-            if (/[0-9]/.test(password)) strength++;
-            if (/[^A-Za-z0-9]/.test(password)) strength++;
-            return Math.min(strength, 5);
-        }
-
-        function updateStrengthIndicator(strength) {
-            const indicators = document.querySelectorAll('.password-strength-indicator');
-            indicators.forEach(indicator => {
-                indicator.className = 'password-strength-indicator';
-                indicator.classList.add(`strength-${strength}`);
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function(e) {
+                const password = e.target.value;
+                let strength = 0;
+                if (password.length >= 8) strength++;
+                if (/[A-Z]/.test(password)) strength++;
+                if (/[a-z]/.test(password)) strength++;
+                if (/[0-9]/.test(password)) strength++;
+                if (/[^A-Za-z0-9]/.test(password)) strength++;
+                strength = Math.min(strength, 5);
+                
+                const indicator = document.querySelector('.password-strength-indicator');
+                if (indicator) {
+                    indicator.className = 'password-strength-indicator';
+                    let width, color;
+                    switch(strength) {
+                        case 0: width = '20%'; color = '#ef4444'; break;
+                        case 1: width = '40%'; color = '#f59e0b'; break;
+                        case 2: width = '60%'; color = '#f59e0b'; break;
+                        case 3: width = '80%'; color = '#10b981'; break;
+                        case 4: width = '90%'; color = '#10b981'; break;
+                        default: width = '100%'; color = '#10b981';
+                    }
+                    indicator.style.width = width;
+                    indicator.style.background = color;
+                }
             });
         }
     </script>
@@ -382,11 +387,5 @@
             margin-top: 4px;
             transition: all 0.3s ease;
         }
-        .strength-0 { width: 20%; background: #ef4444; }
-        .strength-1 { width: 40%; background: #f59e0b; }
-        .strength-2 { width: 60%; background: #f59e0b; }
-        .strength-3 { width: 80%; background: #10b981; }
-        .strength-4 { width: 90%; background: #10b981; }
-        .strength-5 { width: 100%; background: #10b981; }
     </style>
 </x-guest-layout>

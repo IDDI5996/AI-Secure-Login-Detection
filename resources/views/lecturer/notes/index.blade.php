@@ -4,13 +4,23 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('My Uploaded Notes') }}
             </h2>
-            <a href="{{ route('lecturer.notes.create') }}" 
-               class="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 transform hover:-translate-y-0.5">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Upload New Note
-            </a>
+            <div class="flex items-center gap-3">
+                <!-- Export Button -->
+                <button onclick="exportNotes()" 
+                        class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-all duration-200">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export CSV
+                </button>
+                <a href="{{ route('lecturer.notes.create') }}" 
+                   class="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 transform hover:-translate-y-0.5">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Upload New Note
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -108,12 +118,12 @@
                         <option value="inactive">Inactive Only</option>
                     </select>
                     <div class="text-sm text-gray-500">
-                        Showing {{ $notes->firstItem() ?? 0 }} - {{ $notes->lastItem() ?? 0 }} of {{ $notes->total() }}
+                        Showing <span id="visible-count">{{ $notes->count() }}</span> of {{ $notes->total() }} notes
                     </div>
                 </div>
             </div>
 
-            <!-- Notes Table (Enhanced) -->
+            <!-- Notes Table -->
             @if($notes->count())
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="overflow-x-auto">
@@ -154,7 +164,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="text-sm text-gray-600">{{ $note->formatted_size }}</span>
-                                        <div class="text-xs text-gray-400">{{ pathinfo($note->file_name, PATHINFO_EXTENSION) }}</div>
+                                        <div class="text-xs text-gray-400">{{ strtoupper(pathinfo($note->file_name, PATHINFO_EXTENSION)) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
@@ -227,10 +237,12 @@
             const searchInput = document.getElementById('note-search');
             const statusFilter = document.getElementById('status-filter');
             const rows = document.querySelectorAll('.note-row');
+            const visibleCountSpan = document.getElementById('visible-count');
             
             function filterNotes() {
                 const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
                 const statusValue = statusFilter ? statusFilter.value : 'all';
+                let visibleCount = 0;
                 
                 rows.forEach(row => {
                     const title = row.dataset.title || '';
@@ -240,20 +252,24 @@
                     
                     const matchesSearch = title.includes(searchTerm) || course.includes(searchTerm) || description.includes(searchTerm);
                     const matchesStatus = statusValue === 'all' || rowStatus === statusValue;
+                    const isVisible = matchesSearch && matchesStatus;
                     
-                    row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) visibleCount++;
                 });
                 
-                // Optional: Show/hide "no results" message
-                let visibleCount = 0;
-                rows.forEach(row => { if (row.style.display !== 'none') visibleCount++; });
+                // Update visible count
+                if (visibleCountSpan) {
+                    visibleCountSpan.textContent = visibleCount;
+                }
                 
+                // Show/hide "no results" message
                 let noResultsMsg = document.getElementById('no-search-results');
                 if (visibleCount === 0 && rows.length > 0) {
                     if (!noResultsMsg) {
                         noResultsMsg = document.createElement('tr');
                         noResultsMsg.id = 'no-search-results';
-                        noResultsMsg.innerHTML = '<td colspan="6" class="px-6 py-12 text-center text-gray-500">No notes match your search criteria.</td>';
+                        noResultsMsg.innerHTML = '<td colspan="6" class="px-6 py-12 text-center text-gray-500">📭 No notes match your search criteria.</td>';
                         document.getElementById('notes-table-body').appendChild(noResultsMsg);
                     }
                 } else if (noResultsMsg) {
@@ -264,6 +280,38 @@
             if (searchInput) searchInput.addEventListener('input', filterNotes);
             if (statusFilter) statusFilter.addEventListener('change', filterNotes);
         });
+
+        // Export notes to CSV
+        function exportNotes() {
+            const rows = document.querySelectorAll('.note-row');
+            const csvData = [['Course Code', 'Course Name', 'Title', 'Description', 'File Size', 'Downloads', 'Status', 'Uploaded At']];
+            
+            rows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const courseCode = row.querySelector('td:first-child .text-sm.font-medium')?.innerText || '';
+                    const courseName = row.querySelector('td:first-child .text-xs.text-gray-500')?.innerText || '';
+                    const title = row.querySelector('td:nth-child(2) .text-sm.font-medium')?.innerText || '';
+                    const description = row.querySelector('td:nth-child(2) .text-xs.text-gray-500')?.innerText || '';
+                    const fileSize = row.querySelector('td:nth-child(3) .text-sm')?.innerText || '';
+                    const downloads = row.querySelector('td:nth-child(4) .text-sm.font-medium')?.innerText || '0';
+                    const status = row.querySelector('td:nth-child(5) span')?.innerText || '';
+                    const uploadedAt = row.querySelector('td:nth-child(2) .text-xs.text-gray-500:last-child')?.innerText || '';
+                    
+                    csvData.push([courseCode, courseName, title, description, fileSize, downloads, status, uploadedAt]);
+                }
+            });
+            
+            const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `notes_export_{{ date('Y-m-d_H-i-s') }}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     </script>
     @endpush
 </x-app-layout>

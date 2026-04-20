@@ -4,8 +4,30 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Student Portal – Fourth Year, Semester 2 Notes') }}
             </h2>
-            <div class="text-sm text-gray-500">
-                <span class="hidden sm:inline">Last updated: </span>{{ now()->format('M d, Y') }}
+            <div class="flex items-center gap-3">
+                <!-- Notification Bell -->
+                <div class="relative" x-data="{ open: false, newNotes: {{ session('new_notes_count', 0) }} }">
+                    <button @click="open = !open" class="relative p-2 text-gray-500 hover:text-gray-700 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span x-show="newNotes > 0" x-text="newNotes" 
+                              class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center"></span>
+                    </button>
+                    <div x-show="open" @click.away="open = false" 
+                         class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div class="p-3 border-b border-gray-200 font-semibold text-gray-700">Notifications</div>
+                        <div class="max-h-96 overflow-y-auto">
+                            <div class="p-3 text-sm text-gray-500">🎉 New notes have been added to your courses!</div>
+                            <div class="p-3 text-xs text-gray-400 border-t border-gray-100 text-center">
+                                <a href="#" class="text-primary-600 hover:underline">Mark all as read</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <span class="hidden sm:inline">Last updated: </span>{{ now()->format('M d, Y') }}
+                </div>
             </div>
         </div>
     </x-slot>
@@ -13,10 +35,9 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
-            <!-- Hero Section with Stats -->
+            <!-- Hero Section -->
             <div class="mb-10 bg-gradient-to-r from-primary-600 to-primary-800 rounded-2xl shadow-xl overflow-hidden">
                 <div class="relative px-6 py-8 md:py-12 md:px-12">
-                    <!-- Decorative background pattern -->
                     <div class="absolute inset-0 opacity-10">
                         <svg class="absolute right-0 top-0 h-64 w-64" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -50,7 +71,7 @@
                 </div>
             </div>
 
-            <!-- Search & Filter Bar (Optional Excellence) -->
+            <!-- Search Bar -->
             <div class="mb-8">
                 <div class="relative max-w-md">
                     <label for="course-search" class="sr-only">Search courses</label>
@@ -90,8 +111,7 @@
                                         <span class="text-xs text-gray-500">{{ $note->created_at->diffForHumans() }}</span>
                                     </div>
                                     <a href="{{ route('student.course-notes', $note->course) }}" 
-                                       class="block font-semibold text-gray-800 hover:text-primary-600 transition-colors duration-200"
-                                       aria-label="View notes for {{ $note->title }}">
+                                       class="block font-semibold text-gray-800 hover:text-primary-600 transition-colors duration-200">
                                         {{ $note->title }}
                                     </a>
                                     @if($note->description)
@@ -147,15 +167,18 @@
                     <span class="text-xs text-gray-500">{{ $courses->count() }} total</span>
                 </div>
                 
+                <!-- Course count badge for empty search -->
+                <div id="search-feedback" class="text-center text-sm text-gray-500 mb-4 hidden">
+                    No courses match your search.
+                </div>
+                
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="courses-grid">
                     @forelse($courses as $course)
                     <a href="{{ route('student.course-notes', $course) }}" 
                        class="course-card block bg-white rounded-xl border border-gray-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group"
                        data-course-code="{{ strtolower($course->code) }}" 
-                       data-course-name="{{ strtolower($course->name) }}"
-                       aria-label="View notes for {{ $course->code }}: {{ $course->name }}">
+                       data-course-name="{{ strtolower($course->name) }}">
                         <div class="relative">
-                            <!-- Top colored bar based on course type -->
                             <div class="h-2 {{ $course->type == 'core' ? 'bg-primary-500' : 'bg-purple-500' }}"></div>
                             <div class="p-5">
                                 <div class="flex justify-between items-start">
@@ -205,30 +228,39 @@
         </div>
     </div>
 
-    <!-- Live Search Script (for courses) -->
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('course-search');
             const courseCards = document.querySelectorAll('.course-card');
+            const searchFeedback = document.getElementById('search-feedback');
             
             if (searchInput) {
                 searchInput.addEventListener('input', function(e) {
                     const query = e.target.value.toLowerCase().trim();
+                    let visibleCount = 0;
                     
                     courseCards.forEach(card => {
                         const code = card.dataset.courseCode || '';
                         const name = card.dataset.courseName || '';
                         const matches = code.includes(query) || name.includes(query);
                         card.style.display = matches ? '' : 'none';
+                        if (matches) visibleCount++;
                     });
+                    
+                    if (searchFeedback) {
+                        if (visibleCount === 0 && query !== '') {
+                            searchFeedback.classList.remove('hidden');
+                        } else {
+                            searchFeedback.classList.add('hidden');
+                        }
+                    }
                 });
             }
         });
     </script>
     @endpush
 
-    <!-- Additional styles for line-clamp (if Tailwind doesn't have it) -->
     <style>
         .line-clamp-2 {
             display: -webkit-box;

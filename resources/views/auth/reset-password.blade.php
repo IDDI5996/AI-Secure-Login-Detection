@@ -27,7 +27,7 @@
             </div>
 
             <!-- Validation Errors -->
-            <x-auth-validation-errors class="mb-4" :errors="$errors" />
+            <x-validation-errors class="mb-4" :errors="$errors" />
 
             <!-- Reset Form -->
             <div class="bg-white py-8 px-6 shadow-xl rounded-2xl border border-gray-200">

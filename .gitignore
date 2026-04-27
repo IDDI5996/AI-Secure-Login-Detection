@@ -1,24 +1,63 @@
-*.log
-.DS_Store
+# Environment
 .env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
+.env.*
+!.env.example
 
-/public/hot
-
+# Laravel
+/bootstrap/cache/*.php
 /storage/*.key
-/storage/pail
+/storage/framework/*
+/storage/logs/*
+/storage/debugbar
+/public/storage
+
+# Node / Frontend
+/node_modules
+/public/build
+/public/hot
+/public/mix-manifest.json
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Composer
 /vendor
-Homestead.json
-Homestead.yaml
+# composer.lock (keep for apps)
+
+# IDEs
+/.idea
+/.vscode
+/.fleet
+/.zed
+/.nova
+
+# OS
+.DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Testing
+.phpunit.result.cache
+.phpunit.cache
+/phpunit.xml
+
+# Logs
+*.log
+
+# Security / Sensitive
+*.sqlite
+*.db
+*.sql
+*.dump
+*.pem
+*.key
+*.crt
+*.csr
+
+# Docker
+docker-compose.override.yml
+.env.docker

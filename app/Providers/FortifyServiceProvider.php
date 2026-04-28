@@ -17,20 +17,15 @@ use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use App\Services\AiDetectionEngin;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         Fortify::createUsersUsing(CreateNewUser::class);
@@ -41,7 +36,6 @@ class FortifyServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
-
             return Limit::perMinute(5)->by($throttleKey);
         });
 
@@ -49,22 +43,22 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
-        // -- AI Detection Integration for web login --
+        // AI Detection Integration for web login
         Fortify::authenticateUsing(function (Request $request) {
+            Log::info('Fortify authenticateUsing callback triggered', ['email' => $request->email]);
+
             $user = \App\Models\User::where('email', $request->email)->first();
             $aiEngine = app(AiDetectionEngin::class);
 
-            // Get IP (using simple $request->ip() – you can enhance with real‑IP header logic later)
             $realIp = $request->ip();
-
-            // Basic browser/device parsing (optional but helpful)
             $browser = $this->parseBrowser($request->userAgent());
             $platform = $this->parsePlatform($request->userAgent());
             $deviceType = $this->parseDeviceType($request->userAgent());
 
-            // Record a fresh login attempt
+            // Record login attempt (with email to avoid null constraint issues)
             $loginAttempt = LoginAttempt::create([
                 'user_id' => $user?->id,
+                'email' => $request->email,   // <-- ADDED THIS LINE
                 'ip_address' => $realIp,
                 'user_agent' => $request->userAgent(),
                 'country' => null,
@@ -76,7 +70,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'attempted_at' => now(),
             ]);
 
-            // Run AI analysis (works with or without a user)
+            // Run AI analysis (handles null user)
             $analysis = $aiEngine->analyzeLoginAttempt($user ?? null, $request, $realIp);
 
             $loginAttempt->update([
@@ -85,11 +79,16 @@ class FortifyServiceProvider extends ServiceProvider
                 'detection_factors' => $analysis['detection_factors'],
             ]);
 
-            // If credentials are wrong
+            Log::info('Login attempt updated', [
+                'id' => $loginAttempt->id,
+                'risk_score' => $analysis['risk_score'],
+                'is_suspicious' => $analysis['is_suspicious'],
+            ]);
+
+            // Credential check
             if (!$user || !Hash::check($request->password, $user->password)) {
                 $loginAttempt->update(['is_successful' => false]);
 
-                // If the failed attempt is suspicious, create a SuspiciousActivity
                 if ($analysis['is_suspicious']) {
                     SuspiciousActivity::create([
                         'user_id' => $user?->id,
@@ -108,24 +107,16 @@ class FortifyServiceProvider extends ServiceProvider
                     ]);
                 }
 
-                // Return null to let Fortify handle the "invalid credentials" error
-                return null;
+                return null; // Fortify handles the error
             }
 
             // Successful login
             $loginAttempt->update(['is_successful' => true]);
 
-            // If the successful login is suspicious, you could also create a SuspiciousActivity
-            // (as the AiLoginController does). For now we simply allow the login.
-            // You can extend it to require verification later.
-
             return $user;
         });
     }
 
-    /**
-     * Simple browser parser (mirrors AiDetectionEngin).
-     */
     private function parseBrowser($userAgent): string
     {
         if (str_contains($userAgent, 'Chrome')) return 'Chrome';

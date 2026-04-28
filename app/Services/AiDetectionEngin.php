@@ -17,28 +17,43 @@ class AiDetectionEngin
 
     /**
      * Analyze a login attempt using the real client IP.
-     * 
-     * @param User $user
+     *
+     * @param User|null $user  Can be null for unknown users (failed attempts)
      * @param Request $request
-     * @param string|null $realIp  // Pass the real IP from controller
+     * @param string|null $realIp
      */
-    public function analyzeLoginAttempt(User $user, Request $request, ?string $realIp = null): array
+    public function analyzeLoginAttempt(?User $user = null, Request $request, ?string $realIp = null): array
     {
         $this->resetAnalysis();
-        
+
         // Use provided real IP, fallback to request IP if not given
         $clientIp = $realIp ?? $request->ip();
-        
+
+        // If user is unknown (e.g., failed login for non-existent email)
+        if (!$user) {
+            // Only IP reputation analysis can be performed without user data
+            $this->analyzeIpReputation($clientIp);
+            $this->calculateRiskScore();
+
+            return [
+                'risk_score' => $this->riskScore,
+                'is_suspicious' => $this->riskScore >= 0.7,
+                'detection_factors' => $this->riskFactors,
+                'reasons' => $this->detectionReasons
+            ];
+        }
+
+        // Known user – full analysis
         $profile = $this->getUserProfile($user);
-        
+
         $this->analyzeLocation($user, $clientIp, $profile);
         $this->analyzeDevice($user, $request, $profile);
         $this->analyzeTimePattern($user, $profile);
         $this->analyzeVelocity($user);
         $this->analyzeIpReputation($clientIp);
-        
+
         $this->calculateRiskScore();
-        
+
         return [
             'risk_score' => $this->riskScore,
             'is_suspicious' => $this->riskScore >= 0.7,
@@ -50,17 +65,17 @@ class AiDetectionEngin
     private function analyzeLocation($user, string $ip, $profile): void
     {
         $location = $this->getLocationFromIp($ip);
-        
+
         $factorWeight = 0.3;
         $locationRisk = 0.0;
-        
+
         if ($location) {
             $isUsualLocation = $this->checkUsualLocation($profile, $location, $ip);
-            
+
             if (!$isUsualLocation) {
                 $locationRisk = 0.8;
                 $this->detectionReasons[] = "Login from unusual location: {$location['city']}, {$location['country']}";
-                
+
                 if (!empty($profile->usual_locations)) {
                     $lastLocation = end($profile->usual_locations);
                     if (isset($lastLocation['country']) && $lastLocation['country'] !== $location['country']) {
@@ -70,7 +85,7 @@ class AiDetectionEngin
                 }
             }
         }
-        
+
         $this->riskFactors['location'] = [
             'weight' => $factorWeight,
             'risk' => $locationRisk,
@@ -82,20 +97,20 @@ class AiDetectionEngin
     {
         $userAgent = $request->userAgent();
         $deviceFingerprint = $this->generateDeviceFingerprint($request);
-        
+
         $factorWeight = 0.25;
         $deviceRisk = 0.0;
-        
+
         $browser = $this->parseBrowser($userAgent);
         $platform = $this->parsePlatform($userAgent);
         $deviceType = $this->parseDeviceType($userAgent);
-        
+
         $usualDevices = $profile->device_fingerprints ?? [];
-        
+
         if (!empty($usualDevices) && !in_array($deviceFingerprint, $usualDevices)) {
             $deviceRisk = 0.7;
             $this->detectionReasons[] = "Login from unrecognized device";
-            
+
             if (!empty($usualDevices)) {
                 $lastDevice = end($usualDevices);
                 if (($lastDevice['device_type'] ?? '') !== $deviceType) {
@@ -104,7 +119,7 @@ class AiDetectionEngin
                 }
             }
         }
-        
+
         if (empty($usualDevices)) {
             $this->updateDeviceProfile($profile, $deviceFingerprint, [
                 'browser' => $browser,
@@ -113,7 +128,7 @@ class AiDetectionEngin
                 'user_agent' => $userAgent
             ]);
         }
-        
+
         $this->riskFactors['device'] = [
             'weight' => $factorWeight,
             'risk' => $deviceRisk,
@@ -130,12 +145,12 @@ class AiDetectionEngin
     {
         $currentHour = now()->hour;
         $currentDay = now()->dayOfWeek;
-        
+
         $factorWeight = 0.15;
         $timeRisk = 0.0;
-        
+
         $usualTimes = $profile->usual_times ?? ['hour_ranges' => [], 'days' => []];
-        
+
         if (!empty($usualTimes['hour_ranges'])) {
             $isUsualHour = false;
             foreach ($usualTimes['hour_ranges'] as $hourRange) {
@@ -149,12 +164,12 @@ class AiDetectionEngin
                 $this->detectionReasons[] = "Login at unusual hour";
             }
         }
-        
+
         if (!empty($usualTimes['days']) && !in_array($currentDay, $usualTimes['days'])) {
             $timeRisk = max($timeRisk, 0.5);
             $this->detectionReasons[] = "Login on unusual day";
         }
-        
+
         $this->riskFactors['time_pattern'] = [
             'weight' => $factorWeight,
             'risk' => $timeRisk,
@@ -171,15 +186,15 @@ class AiDetectionEngin
         $recentAttempts = LoginAttempt::where('user_id', $user->id)
             ->where('attempted_at', '>=', now()->subMinutes(10))
             ->count();
-        
+
         $factorWeight = 0.2;
         $velocityRisk = 0.0;
-        
+
         if ($recentAttempts > 3) {
             $velocityRisk = min(1.0, $recentAttempts * 0.2);
             $this->detectionReasons[] = "Multiple login attempts in short period";
         }
-        
+
         $this->riskFactors['velocity'] = [
             'weight' => $factorWeight,
             'risk' => $velocityRisk,
@@ -191,20 +206,20 @@ class AiDetectionEngin
     {
         $factorWeight = 0.1;
         $reputationRisk = 0.0;
-        
+
         $isSuspiciousIp = $this->checkIpReputation($ip);
-        
+
         if ($isSuspiciousIp) {
             $reputationRisk = 1.0;
             $this->detectionReasons[] = "Login from suspicious IP (VPN/Proxy/Tor)";
         }
-        
+
         $location = $this->getLocationFromIp($ip);
         if ($location && $this->isHighRiskCountry($location['country'])) {
             $reputationRisk = max($reputationRisk, 0.8);
             $this->detectionReasons[] = "Login from high-risk country";
         }
-        
+
         $this->riskFactors['ip_reputation'] = [
             'weight' => $factorWeight,
             'risk' => $reputationRisk,
@@ -220,12 +235,12 @@ class AiDetectionEngin
     {
         $weightedSum = 0.0;
         $totalWeight = 0.0;
-        
+
         foreach ($this->riskFactors as $factor) {
             $weightedSum += $factor['risk'] * $factor['weight'];
             $totalWeight += $factor['weight'];
         }
-        
+
         $this->riskScore = $totalWeight > 0 ? $weightedSum / $totalWeight : 0.0;
         $mlAdjustment = $this->getMlAdjustment();
         $this->riskScore = min(1.0, max(0.0, $this->riskScore + $mlAdjustment));
@@ -253,7 +268,7 @@ class AiDetectionEngin
             $request->userAgent(),
             $request->header('Accept-Language'),
             $request->header('Accept-Encoding'),
-            $request->ip() // Note: this is still the proxy IP, but for device fingerprint it's okay
+            $request->ip()
         ];
         return hash('sha256', implode('|', $components));
     }

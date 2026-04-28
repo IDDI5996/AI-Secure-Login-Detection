@@ -35,28 +35,10 @@ class DashboardController extends Controller
         }
     }
 
-    private function superAdminDashboard($user){
-    $today = Carbon::today();
-
-    $stats = [
-        'todayLogins' => LoginAttempt::whereDate('attempted_at', $today)->count(),
-        'suspiciousAttempts' => LoginAttempt::whereDate('attempted_at', $today)
-            ->where('is_suspicious', true)
-            ->count(),
-        'avgRiskScore' => LoginAttempt::whereDate('attempted_at', $today)
-            ->avg('risk_score') * 100 ?? 0,
-        'pendingReviews' => SuspiciousActivity::where('status', 'pending')->count(),
-        'totalUsers' => User::count(),
-        'activeUsers' => User::where('last_login_at', '>=', $today->subDays(7))->count(),
-        'failedLogins' => LoginAttempt::whereDate('attempted_at', $today)
-            ->where('is_successful', false)
-            ->count(),
-        'uniqueLocations' => LoginAttempt::whereDate('attempted_at', $today)
-            ->distinct('country')
-            ->count('country'),
-    ];
-
-    return view('dashboard', compact('stats'));
+    private function superAdminDashboard($user)
+    {
+        // Redirect to resources/views/dashboard.blade.php
+        return view('dashboard'); // Directly to dashboard.blade.php in root of views folder
     }
 
     private function securityLeadDashboard($user)

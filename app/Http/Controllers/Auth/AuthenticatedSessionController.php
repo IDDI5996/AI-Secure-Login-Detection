@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 use Stevebauman\Location\Facades\Location;
 use DeviceDetector\DeviceDetector;
 use DeviceDetector\Parser\Device\DeviceParserAbstract;
-
+use App\Models\SuspiciousActivity;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -149,6 +149,23 @@ class AuthenticatedSessionController extends Controller
                 'is_suspicious' => true, // 0.8 >= 0.7 threshold
                 'detection_factors' => ['failed_authentication']
             ]);
+            
+             // 🔽 INSERT THIS BLOCK 🔽
+            SuspiciousActivity::create([
+                'user_id' => $loginAttempt->user_id ?? null,
+                'activity_type' => SuspiciousActivity::TYPE_LOGIN,
+                'activity_data' => [
+                    'login_attempt_id' => $loginAttempt->id,
+                    'ip_address' => $loginAttempt->ip_address,
+                    'email_attempted' => $request->email,
+                    'location' => "{$loginAttempt->city}, {$loginAttempt->country}",
+                    'device' => $loginAttempt->device_type,
+                    'is_successful' => false,
+                ],
+                'risk_score' => 0.8,
+                'detection_reasons' => ['failed_authentication'],
+                'status' => SuspiciousActivity::STATUS_PENDING,
+            ]);
 
             Log::warning('❌ Authentication failed', [
                 'email' => $request->email,
@@ -166,6 +183,22 @@ class AuthenticatedSessionController extends Controller
                 'risk_score' => 0.9,
                 'is_suspicious' => true, // 0.9 >= 0.7 threshold
                 'detection_factors' => ['system_error', $e->getMessage()]
+            ]);
+            
+            SuspiciousActivity::create([
+                'user_id' => $loginAttempt->user_id ?? null,
+                'activity_type' => SuspiciousActivity::TYPE_LOGIN,
+                'activity_data' => [
+                    'login_attempt_id' => $loginAttempt->id,
+                    'ip_address' => $loginAttempt->ip_address,
+                    'email_attempted' => $request->email,
+                    'location' => "{$loginAttempt->city}, {$loginAttempt->country}",
+                    'device' => $loginAttempt->device_type,
+                    'is_successful' => false,
+                ],
+                'risk_score' => 0.9,
+                'detection_reasons' => ['system_error', $e->getMessage()],
+                'status' => SuspiciousActivity::STATUS_PENDING,
             ]);
 
             Log::error('💥 Login process error', [

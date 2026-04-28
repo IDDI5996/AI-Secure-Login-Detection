@@ -146,6 +146,7 @@ class AuthenticatedSessionController extends Controller
             $loginAttempt->update([
                 'is_successful' => false,
                 'risk_score' => 0.8, // High risk for failed
+                'is_suspicious' => true, // 0.8 >= 0.7 threshold
                 'detection_factors' => ['failed_authentication']
             ]);
 
@@ -163,6 +164,7 @@ class AuthenticatedSessionController extends Controller
             $loginAttempt->update([
                 'is_successful' => false,
                 'risk_score' => 0.9,
+                'is_suspicious' => true, // 0.9 >= 0.7 threshold
                 'detection_factors' => ['system_error', $e->getMessage()]
             ]);
 

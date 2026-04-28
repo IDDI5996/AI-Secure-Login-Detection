@@ -31,8 +31,9 @@ class AiDetectionEngin
 
         // If user is unknown (e.g., failed login for non-existent email)
         if (!$user) {
-            // Only IP reputation analysis can be performed without user data
+            // Analyse IP reputation and global IP velocity
             $this->analyzeIpReputation($clientIp);
+            $this->analyzeGlobalIpVelocity($clientIp);
             $this->calculateRiskScore();
 
             return [
@@ -228,6 +229,31 @@ class AiDetectionEngin
                 'is_suspicious' => $isSuspiciousIp,
                 'country_risk' => $location['country'] ?? 'unknown'
             ]
+        ];
+    }
+
+    /**
+     * Global velocity check for unknown users: failed attempts from the same IP in last 10 minutes.
+     */
+    private function analyzeGlobalIpVelocity(string $ip): void
+    {
+        $factorWeight = 0.9;  // High weight to dominate the score when many failures occur
+        $velocityRisk = 0.0;
+
+        $recentFailed = LoginAttempt::where('ip_address', $ip)
+            ->where('attempted_at', '>=', now()->subMinutes(10))
+            ->where('is_successful', false)
+            ->count();
+
+        if ($recentFailed > 2) {
+            $velocityRisk = min(1.0, $recentFailed * 0.2);
+            $this->detectionReasons[] = "Multiple failed attempts from the same IP ({$recentFailed})";
+        }
+
+        $this->riskFactors['global_ip_velocity'] = [
+            'weight' => $factorWeight,
+            'risk' => $velocityRisk,
+            'data' => ['recent_failed_from_ip' => $recentFailed]
         ];
     }
 

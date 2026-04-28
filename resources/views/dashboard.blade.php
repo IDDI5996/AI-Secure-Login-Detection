@@ -43,7 +43,7 @@
                     <span class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Actions</span>
                 </div>
 
-                <!-- Quick Actions (moved from right column) -->
+                <!-- Quick Actions -->
                 <a href="{{ route('admin.suspicious-activities') }}" class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700">
                     <svg class="w-5 h-5 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -72,7 +72,7 @@
                     <img class="w-10 h-10 rounded-full" src="{{ auth()->user()->profile_photo_url }}" alt="">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium truncate">{{ auth()->user()->name }}</p>
-                        <p class="text-xs text-gray-400 truncate">Student</p>
+                        <p class="text-xs text-gray-400 truncate">Super Admin</p>
                     </div>
                 </div>
             </div>
@@ -96,16 +96,16 @@
                         <h2 class="text-2xl font-bold text-gray-900">AI‑Powered Login Detection Dashboard</h2>
                         <p class="text-sm text-gray-500 mt-1">Your security overview at a glance</p>
                     </div>
-                    <!-- Stats Bar (like the audit log header) -->
+                    <!-- Stats Bar -->
                     <div class="flex flex-wrap gap-2">
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            Total: {{ $todayLogins ?? 0 }}
+                            Total: {{ $stats['todayLogins'] ?? 0 }}
                         </span>
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            Successful: {{ ($todayLogins ?? 0) - ($suspiciousAttempts ?? 0) }}
+                            Successful: {{ ($stats['todayLogins'] ?? 0) - ($stats['suspiciousAttempts'] ?? 0) }}
                         </span>
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                            Suspicious: {{ $suspiciousAttempts ?? 0 }}
+                            Suspicious: {{ $stats['suspiciousAttempts'] ?? 0 }}
                         </span>
                     </div>
                 </div>
@@ -122,7 +122,7 @@
                             </svg>
                         </div>
                     </div>
-                    <h3 class="text-3xl font-bold text-gray-900">{{ $todayLogins ?? 0 }}</h3>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['todayLogins'] ?? 0 }}</h3>
                     <p class="text-sm text-gray-500 mt-1">Total Logins Today</p>
                 </div>
 
@@ -135,7 +135,7 @@
                             </svg>
                         </div>
                     </div>
-                    <h3 class="text-3xl font-bold text-gray-900">{{ $suspiciousAttempts ?? 0 }}</h3>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['suspiciousAttempts'] ?? 0 }}</h3>
                     <p class="text-sm text-gray-500 mt-1">Suspicious Attempts</p>
                 </div>
 
@@ -148,11 +148,11 @@
                             </svg>
                         </div>
                         <span class="text-xs font-medium px-2 py-1 rounded-full 
-                            {{ ($avgRiskScore ?? 0) < 30 ? 'text-green-600 bg-green-50' : (($avgRiskScore ?? 0) < 70 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50') }}">
-                            {{ ($avgRiskScore ?? 0) < 30 ? 'Low' : (($avgRiskScore ?? 0) < 70 ? 'Medium' : 'High') }}
+                            {{ ($stats['avgRiskScore'] ?? 0) < 30 ? 'text-green-600 bg-green-50' : (($stats['avgRiskScore'] ?? 0) < 70 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50') }}">
+                            {{ ($stats['avgRiskScore'] ?? 0) < 30 ? 'Low' : (($stats['avgRiskScore'] ?? 0) < 70 ? 'Medium' : 'High') }}
                         </span>
                     </div>
-                    <h3 class="text-3xl font-bold text-gray-900">{{ number_format($avgRiskScore ?? 0, 1) }}%</h3>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ number_format($stats['avgRiskScore'] ?? 0, 1) }}%</h3>
                     <p class="text-sm text-gray-500 mt-1">Avg Risk Score</p>
                 </div>
 
@@ -164,18 +164,18 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                         </div>
-                        @if(($pendingReviews ?? 0) > 0)
+                        @if(($stats['pendingReviews'] ?? 0) > 0)
                             <a href="{{ route('admin.suspicious-activities') }}" class="text-xs font-medium text-purple-600 hover:underline">Review</a>
                         @endif
                     </div>
-                    <h3 class="text-3xl font-bold text-gray-900">{{ $pendingReviews ?? 0 }}</h3>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['pendingReviews'] ?? 0 }}</h3>
                     <p class="text-sm text-gray-500 mt-1">Pending Reviews</p>
                 </div>
             </div>
 
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Left Column: Real-time Monitoring + Recent Activities -->
+                <!-- Left Column -->
                 <div class="lg:col-span-2 space-y-8">
                     <!-- Real-time Monitoring -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -191,7 +191,7 @@
                         </div>
                     </div>
 
-                    <!-- Recent Activities (Suspicious activities will appear here) -->
+                    <!-- Recent Activities -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                         <div class="px-6 py-4 border-b border-gray-100">
                             <h3 class="text-lg font-semibold text-gray-900">Recent Activities</h3>
@@ -202,8 +202,9 @@
                     </div>
                 </div>
 
-                <!-- Right Column: AI Detection Panel only (Quick Actions moved to sidebar) -->
+                <!-- Right Column -->
                 <div class="space-y-8">
+                    <!-- AI Detection Panel -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">AI Detection</h3>
                         <livewire:ai-detection-panel />

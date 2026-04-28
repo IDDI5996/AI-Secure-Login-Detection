@@ -45,7 +45,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         // AI Detection Integration for web login
         Fortify::authenticateUsing(function (Request $request) {
-            Log::info('Fortify authenticateUsing callback triggered', ['email' => $request->email]);
+            file_put_contents(storage_path('logs/fortify_test.txt'), now() . " - callback hit for {$request->email}\n", FILE_APPEND);
 
             $user = \App\Models\User::where('email', $request->email)->first();
             $aiEngine = app(AiDetectionEngin::class);

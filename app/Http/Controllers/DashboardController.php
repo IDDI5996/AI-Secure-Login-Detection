@@ -35,9 +35,8 @@ class DashboardController extends Controller
         }
     }
 
-    private function superAdminDashboard($user)
-    {
-           $today = Carbon::today();
+    private function superAdminDashboard($user){
+    $today = Carbon::today();
 
     $stats = [
         'todayLogins' => LoginAttempt::whereDate('attempted_at', $today)->count(),
@@ -48,7 +47,9 @@ class DashboardController extends Controller
             ->avg('risk_score') * 100 ?? 0,
         'pendingReviews' => SuspiciousActivity::where('status', 'pending')->count(),
         'totalUsers' => User::count(),
-        'activeUsers' => User::where('last_login_at', '>=', $today->subDays(7))->count(),
+        'activeUsers' => LoginAttempt::where('attempted_at', '>=', $today->subDays(7))
+            ->distinct('user_id')
+            ->count('user_id'),
         'failedLogins' => LoginAttempt::whereDate('attempted_at', $today)
             ->where('is_successful', false)
             ->count(),
@@ -58,7 +59,6 @@ class DashboardController extends Controller
     ];
 
     return view('dashboard', compact('stats'));
-    
     }
 
     private function securityLeadDashboard($user)

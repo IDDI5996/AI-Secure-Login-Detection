@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use App\Models\VerificationAttempt;
-use App\Services\AiDetectionEngine;
+use App\Services\AiDetectionEngin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +18,7 @@ class AiLoginController extends Controller
 {
     protected $aiEngine;
     
-    public function __construct(AiDetectionEngine $aiEngine)
+    public function __construct(AiDetectionEngin $aiEngine)
     {
         $this->aiEngine = $aiEngine;
     }
@@ -38,27 +38,35 @@ class AiLoginController extends Controller
         // Record login attempt before authentication (using real IP)
         $loginAttempt = $this->recordLoginAttempt($user, $realIp, $request, false);
         
+        // 1. Analyse the attempt with the AI engine regardless of success/failure
+        // Pass user only if we found one; the engine can handle null.
+        $analysis = $this->aiEngine->analyzeLoginAttempt($user ?? null, $request, $realIp);
+        
+        // 2. Update the login attempt with the risk analysis immediately
+        $loginAttempt->update([
+            'risk_score' => $analysis['risk_score'],
+            'is_suspicious' => $analysis['is_suspicious'],
+            'detection_factors' => $analysis['detection_factors'],
+        ]);
+        
         if (!$user || !Hash::check($request->password, $user->password)) {
-            // Invalid credentials
+            // Invalid credentials – mark as failed
             $loginAttempt->update(['is_successful' => false]);
+            
+            // If the failed attempt is high risk, create a SuspiciousActivity and alert admins
+            if ($analysis['is_suspicious']) {
+                $this->handleSuspiciousFailedLogin($user, $loginAttempt, $analysis);
+            }
+            
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
         
-        // Modify the request to use real IP for AI analysis
-        // We'll pass the real IP separately to the AI engine
-        $analysis = $this->aiEngine->analyzeLoginAttempt($user, $request, $realIp);
+        // Successful login
+        $loginAttempt->update(['is_successful' => true]);
         
-        // Update login attempt with analysis
-        $loginAttempt->update([
-            'is_successful' => true,
-            'is_suspicious' => $analysis['is_suspicious'],
-            'risk_score' => $analysis['risk_score'],
-            'detection_factors' => $analysis['detection_factors']
-        ]);
-        
-        // If suspicious, require verification
+        // If the successful login is suspicious, require verification
         if ($analysis['is_suspicious']) {
             $this->handleSuspiciousLogin($user, $loginAttempt, $analysis);
             
@@ -70,7 +78,7 @@ class AiLoginController extends Controller
             ]);
         }
         
-        // Normal login
+        // Normal successful login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
         return response()->json([
@@ -207,6 +215,33 @@ class AiLoginController extends Controller
         $this->updateBehaviorProfile($user, $loginAttempt);
     }
     
+    /**
+     * Handle a suspicious but FAILED login attempt.
+     * Records the activity for security monitoring and alerts administrators.
+     */
+    private function handleSuspiciousFailedLogin($user, $loginAttempt, $analysis): void
+    {
+        // Create a SuspiciousActivity even without a verified user (user may be null)
+        SuspiciousActivity::create([
+            'user_id' => $user?->id,
+            'activity_type' => SuspiciousActivity::TYPE_LOGIN,
+            'activity_data' => [
+                'login_attempt_id' => $loginAttempt->id,
+                'ip_address' => $loginAttempt->ip_address,
+                'email_attempted' => $loginAttempt->email ?? request('email'),
+                'location' => "{$loginAttempt->city}, {$loginAttempt->country}",
+                'device' => $loginAttempt->device_type,
+                'is_successful' => false,
+            ],
+            'risk_score' => $analysis['risk_score'],
+            'detection_reasons' => $analysis['reasons'],
+            'status' => SuspiciousActivity::STATUS_PENDING
+        ]);
+        
+        // Notify admins about the high-risk failed attempt (no user notification because the user is either unknown or failed)
+        $this->notifyAdmins($user, $loginAttempt, $analysis);
+    }
+    
     private function handleSuccessfulLogin($user, $loginAttempt): void
     {
         $this->updateBehaviorProfile($user, $loginAttempt);
@@ -229,7 +264,7 @@ class AiLoginController extends Controller
         ]);
     }
     
-    // ========== Helper methods (implement as needed) ==========
+    // ========== Helper methods ==========
     private function getLocationData(string $ip): ?array
     {
         try {

@@ -2,6 +2,14 @@
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
-        <group/>
+        <group>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/.gitignore</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/.env.example</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/database/migrations/2026_04_10_220612_create_notes_table.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/database/migrations/2025_12_23_205343_add_missing_fields_to_users_table.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/database/migrations/2025_12_23_202259_add_security_fields_to_users_table.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/routes/api.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/resources/views/components/validation-errors.blade.php</file>
+        </group>
     </open-files>
 </project-private>

@@ -1,140 +1,172 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Security Operations Center') }}
-            </h2>
-            <div class="flex items-center space-x-4">
-                <span class="text-sm text-gray-600 bg-yellow-100 px-3 py-1 rounded-full">
-                    <span class="font-medium">Role:</span> 
-                    <span class="text-yellow-700">
-                        @if(auth()->user()->role === 'security_lead') Security Lead
-                        @elseif(auth()->user()->role === 'security_analyst') Security Analyst
-                        @else {{ auth()->user()->role }}
-                        @endif
-                    </span>
-                </span>
-                <button onclick="toggleSystemLock()" 
-                        id="lockSystemBtn"
-                        class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition duration-150">
-                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Lock System
-                </button>
+    <div class="flex h-[calc(100vh-4rem)] bg-gray-50" x-data="{ sidebarOpen: true }">
+        <!-- Sidebar -->
+        <aside 
+            class="w-72 bg-gray-900 text-white flex flex-col shadow-xl transition-all duration-300"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+        >
+            <!-- Sidebar Header -->
+            <div class="p-6 border-b border-gray-700">
+                <h1 class="text-xl font-bold tracking-wide">SOC</h1>
+                <p class="text-xs text-gray-400 mt-1">Security Operations Center</p>
             </div>
-        </div>
-    </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Security Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Navigation -->
+            <nav class="flex-1 px-4 py-6 space-y-1">
+                <a href="{{ route('dashboard') }}" 
+                   class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-yellow-600 text-white' : 'text-gray-300 hover:bg-gray-700' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Dashboard
+                </a>
+
+                <a href="{{ route('admin.suspicious-activities') }}" 
+                   class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('admin.suspicious-activities*') ? 'bg-yellow-600 text-white' : 'text-gray-300 hover:bg-gray-700' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    Alerts
+                    @if(($stats['pendingReviews'] ?? 0) > 0)
+                        <span class="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{{ $stats['pendingReviews'] }}</span>
+                    @endif
+                </a>
+
+                <a href="{{ route('admin.audit-log') }}" 
+                   class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('admin.audit-log*') ? 'bg-yellow-600 text-white' : 'text-gray-300 hover:bg-gray-700' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Audit Log
+                </a>
+
+                <a href="{{ route('admin.risk-report') }}" 
+                   class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('admin.risk-report*') ? 'bg-yellow-600 text-white' : 'text-gray-300 hover:bg-gray-700' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Risk Report
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <img class="w-10 h-10 rounded-full" src="{{ auth()->user()->profile_photo_url }}" alt="">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-gray-400 truncate">{{ auth()->user()->role === 'security_lead' ? 'Security Lead' : 'Analyst' }}</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle for mobile -->
+        <div class="lg:hidden fixed top-4 left-4 z-50">
+            <button @click="sidebarOpen = !sidebarOpen" class="p-2 rounded-md bg-gray-900 text-white shadow-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto px-4 py-8 lg:px-8">
+            <!-- Page Header -->
+            <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Security Operations Center</h2>
+                    <p class="text-sm text-gray-500 mt-1">Welcome back, {{ auth()->user()->name }}. Here's the current threat landscape.</p>
+                </div>
+                <div class="mt-4 sm:mt-0 flex space-x-3">
+                    <button onclick="toggleSystemLock()" 
+                            id="lockSystemBtn"
+                            class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition duration-150">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Lock System
+                    </button>
+                </div>
+            </div>
+
+            <!-- Security Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <!-- High Risk Activities -->
-                <div class="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-red-800">High Risk Activities</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['highRiskActivities'] ?? 0 }}</p>
-                            <div class="mt-2">
-                                <span class="text-xs font-medium text-red-600 bg-red-100 px-2 py-1 rounded-full">
-                                    Requires Immediate Attention
-                                </span>
-                            </div>
-                        </div>
-                        <div class="bg-red-500 rounded-lg p-3">
-                            <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-50 rounded-xl">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                             </svg>
                         </div>
+                        <span class="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">Immediate Attention</span>
                     </div>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['highRiskActivities'] ?? 0 }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">High Risk Activities</p>
                 </div>
 
                 <!-- Pending Reviews -->
-                <div class="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-orange-800">Pending Reviews</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['pendingReviews'] ?? 0 }}</p>
-                            <a href="{{ route('admin.suspicious-activities') }}" 
-                               class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 mt-2">
-                                Start Review
-                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </a>
-                        </div>
-                        <div class="bg-orange-500 rounded-lg p-3">
-                            <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-orange-50 rounded-xl">
+                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </div>
+                        <a href="{{ route('admin.suspicious-activities') }}" class="text-xs font-medium text-orange-600 hover:underline">Review</a>
                     </div>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['pendingReviews'] ?? 0 }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">Pending Reviews</p>
                 </div>
 
-                <!-- Recent Alerts -->
-                <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-blue-800">24h Alerts</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['recentAlerts'] ?? 0 }}</p>
-                            <div class="mt-2">
-                                <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                                    Last 24 hours
-                                </span>
-                            </div>
-                        </div>
-                        <div class="bg-blue-500 rounded-lg p-3">
-                            <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <!-- 24h Alerts -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-50 rounded-xl">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                         </div>
                     </div>
+                    <h3 class="text-3xl font-bold text-gray-900">{{ $stats['recentAlerts'] ?? 0 }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">24h Alerts</p>
                 </div>
 
                 <!-- Threat Level -->
-                <div class="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-800">Threat Level</p>
-                            <div class="mt-2">
-                                @if(($stats['suspiciousAttempts'] ?? 0) < 5)
-                                    <span class="text-2xl font-bold text-green-600">LOW</span>
-                                    <div class="text-xs text-green-600 mt-1">Normal Operations</div>
-                                @elseif(($stats['suspiciousAttempts'] ?? 0) < 15)
-                                    <span class="text-2xl font-bold text-yellow-600">MEDIUM</span>
-                                    <div class="text-xs text-yellow-600 mt-1">Increased Monitoring</div>
-                                @else
-                                    <span class="text-2xl font-bold text-red-600">HIGH</span>
-                                    <div class="text-xs text-red-600 mt-1">Active Threat Detected</div>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="bg-gray-500 rounded-lg p-3">
-                            <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
                         </div>
                     </div>
+                    @if(($stats['suspiciousAttempts'] ?? 0) < 5)
+                        <span class="text-2xl font-bold text-green-600">LOW</span>
+                        <p class="text-sm text-gray-500 mt-1">Normal Operations</p>
+                    @elseif(($stats['suspiciousAttempts'] ?? 0) < 15)
+                        <span class="text-2xl font-bold text-yellow-600">MEDIUM</span>
+                        <p class="text-sm text-gray-500 mt-1">Increased Monitoring</p>
+                    @else
+                        <span class="text-2xl font-bold text-red-600">HIGH</span>
+                        <p class="text-sm text-gray-500 mt-1">Active Threat Detected</p>
+                    @endif
                 </div>
             </div>
 
-            <!-- Main Content -->
+            <!-- Two-Column Content -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Left Column -->
                 <div class="lg:col-span-2 space-y-8">
                     <!-- Active Threats -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <h3 class="text-lg font-semibold text-gray-900">Active Threats</h3>
-                                <div class="flex items-center space-x-2">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        <span class="w-2 h-2 bg-red-400 rounded-full mr-1 animate-pulse"></span>
-                                        Critical
-                                    </span>
-                                </div>
-                            </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">Active Threats</h3>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <span class="w-2 h-2 bg-red-400 rounded-full mr-1 animate-pulse"></span>
+                                Critical
+                            </span>
                         </div>
                         <div class="p-6">
                             @if(class_exists('App\Livewire\ActiveThreats'))
@@ -152,8 +184,8 @@
                     </div>
 
                     <!-- Incident Timeline -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+                        <div class="px-6 py-4 border-b border-gray-100">
                             <h3 class="text-lg font-semibold text-gray-900">Incident Timeline</h3>
                         </div>
                         <div class="p-6">
@@ -174,70 +206,49 @@
 
                 <!-- Right Column -->
                 <div class="space-y-8">
-                    <!-- Quick Actions -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Security Actions</h3>
-                        </div>
-                        <div class="p-6 space-y-3">
-                            <!-- Block IP Address -->
-                            <button onclick="showBlockIpModal()"
-                                    class="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-lg transition duration-150 group">
+                    <!-- Security Actions -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Actions</h3>
+                        <div class="space-y-3">
+                            <button onclick="showBlockIpModal()" class="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-lg transition">
                                 <div class="flex items-center">
-                                    <div class="bg-red-100 p-2 rounded-lg group-hover:bg-red-200">
-                                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                        </svg>
-                                    </div>
-                                    <span class="ml-3 text-sm font-medium text-gray-700">Block IP Address</span>
+                                    <svg class="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Block IP Address</span>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
-
-                            <!-- Require 2FA -->
-                            <button onclick="showRequire2FAModal()"
-                                    class="w-full flex items-center justify-between p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition duration-150 group">
+                            <button onclick="showRequire2FAModal()" class="w-full flex items-center justify-between p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition">
                                 <div class="flex items-center">
-                                    <div class="bg-yellow-100 p-2 rounded-lg group-hover:bg-yellow-200">
-                                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                    </div>
-                                    <span class="ml-3 text-sm font-medium text-gray-700">Require 2FA</span>
+                                    <svg class="w-5 h-5 text-yellow-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Require 2FA</span>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
-
-                            <!-- Lock User Account -->
-                            <button onclick="showLockUserModal()"
-                                    class="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-150 group">
+                            <button onclick="showLockUserModal()" class="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
                                 <div class="flex items-center">
-                                    <div class="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                        </svg>
-                                    </div>
-                                    <span class="ml-3 text-sm font-medium text-gray-700">Lock User Account</span>
+                                    <svg class="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Lock User Account</span>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
-
-                            <!-- Generate Report -->
-                            <button onclick="showGenerateReportModal()"
-                                    class="w-full flex items-center justify-between p-3 bg-green-50 hover:bg-green-100 rounded-lg transition duration-150 group">
+                            <button onclick="showGenerateReportModal()" class="w-full flex items-center justify-between p-3 bg-green-50 hover:bg-green-100 rounded-lg transition">
                                 <div class="flex items-center">
-                                    <div class="bg-green-100 p-2 rounded-lg group-hover:bg-green-200">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                    </div>
-                                    <span class="ml-3 text-sm font-medium text-gray-700">Generate Report</span>
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Generate Report</span>
                                 </div>
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -247,24 +258,23 @@
                     </div>
 
                     <!-- Threat Intelligence -->
-                    <div class="bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-xl p-6">
+                    <div class="bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-2xl p-6">
                         <h3 class="text-lg font-semibold mb-4">Threat Intelligence</h3>
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-300">Known Bad IPs</span>
-                                <span class="text-sm font-medium" id="badIpsCount">0</span>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-300">Known Bad IPs</span>
+                                <span class="font-medium" id="badIpsCount">0</span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-300">Malicious Patterns</span>
-                                <span class="text-sm font-medium" id="maliciousPatternsCount">0</span>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-300">Malicious Patterns</span>
+                                <span class="font-medium" id="maliciousPatternsCount">0</span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-gray-300">VPN/Proxy Detection</span>
-                                <span class="text-sm font-medium text-green-400">Active</span>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-300">VPN/Proxy Detection</span>
+                                <span class="font-medium text-green-400">Active</span>
                             </div>
                             <div class="pt-4 border-t border-gray-700">
-                                <button onclick="showUpdateThreatDbModal()" 
-                                        class="w-full text-sm font-medium text-blue-400 hover:text-blue-300">
+                                <button onclick="showUpdateThreatDbModal()" class="w-full text-sm font-medium text-blue-400 hover:text-blue-300">
                                     Update Threat Database
                                 </button>
                             </div>
@@ -272,131 +282,32 @@
                     </div>
 
                     <!-- Security Tips -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Security Tips</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="space-y-4">
-                                <div class="flex items-start">
-                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <p class="text-sm text-gray-600">Review high-risk activities within 1 hour of detection.</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <svg class="w-5 h-5 text-yellow-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                    </svg>
-                                    <p class="text-sm text-gray-600">Always verify with users before blocking accounts.</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <svg class="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <p class="text-sm text-gray-600">Document all security actions in the incident log.</p>
-                                </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Tips</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <p class="text-sm text-gray-600">Review high-risk activities within 1 hour.</p>
+                            </div>
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <p class="text-sm text-gray-600">Always verify with users before blocking accounts.</p>
+                            </div>
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-sm text-gray-600">Document all security actions in the incident log.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- System Lock Modal -->
-    <div id="systemLockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Lock System</h3>
-                
-                <div class="mb-4">
-                    <label for="lockReason" class="block text-sm font-medium text-gray-700">Reason for locking</label>
-                    <textarea id="lockReason" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></textarea>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="lockDuration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-                    <input type="number" id="lockDuration" value="60" min="1" max="1440" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeSystemLockModal()" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md border">
-                        Cancel
-                    </button>
-                    <button onclick="performSystemLock()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md">
-                        Lock System
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Block IP Modal -->
-    <div id="blockIpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Block IP Address</h3>
-                
-                <div class="mb-4">
-                    <label for="ipAddress" class="block text-sm font-medium text-gray-700">IP Address</label>
-                    <input type="text" id="ipAddress" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm" placeholder="192.168.1.1">
-                </div>
-                
-                <div class="mb-4">
-                    <label for="blockReason" class="block text-sm font-medium text-gray-700">Reason</label>
-                    <textarea id="blockReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></textarea>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="blockDuration" class="block text-sm font-medium text-gray-700">Duration (hours)</label>
-                    <input type="number" id="blockDuration" value="24" min="1" max="720" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeBlockIpModal()" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md border">
-                        Cancel
-                    </button>
-                    <button onclick="performBlockIp()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md">
-                        Block IP
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Require 2FA Modal -->
-    <div id="require2FAModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Require 2FA for User</h3>
-                
-                <div class="mb-4">
-                    <label for="userSearch" class="block text-sm font-medium text-gray-700">Search User</label>
-                    <input type="text" id="userSearch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm" placeholder="Search by name or email" onkeyup="searchUsers(this.value)">
-                    <div id="userResults" class="mt-2 max-h-40 overflow-y-auto hidden"></div>
-                </div>
-                
-                <div class="mb-4">
-                    <label for="twofaReason" class="block text-sm font-medium text-gray-700">Reason</label>
-                    <textarea id="twofaReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm"></textarea>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="selectedUserId" class="block text-sm font-medium text-gray-700">Selected User</label>
-                    <input type="text" id="selectedUserId" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm" readonly>
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button onclick="closeRequire2FAModal()" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md border">
-                        Cancel
-                    </button>
-                    <button onclick="performRequire2FA()" class="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md">
-                        Require 2FA
-                    </button>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <!-- JavaScript for functionality -->

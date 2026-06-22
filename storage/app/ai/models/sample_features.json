@@ -1,0 +1,17 @@
+{
+  "status": 1,
+  "hour": 14,
+  "day_of_week": 3,
+  "minute": 25,
+  "is_weekend": 0,
+  "login_count_24h": 5,
+  "failed_count_24h": 0,
+  "fail_rate_24h": 0.0,
+  "unique_ips_24h": 2,
+  "unique_countries_24h": 1,
+  "unique_devices_24h": 1,
+  "ip_freq": 12,
+  "country_freq": 400,
+  "device_type_freq": 300,
+  "browser_freq": 250
+}

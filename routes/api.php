@@ -20,14 +20,18 @@ use App\Http\Controllers\ExportController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
-// Public routes (no authentication required)
 Route::post('/login', [AiLoginController::class, 'login']);
 Route::post('/verify-login', [AiLoginController::class, 'verifyLogin']);
 Route::post('/request-verification/{method}', [VerificationController::class, 'requestVerification']);
 
 // Authenticated routes (require Sanctum token)
 Route::middleware(['auth:sanctum'])->group(function () {
+    
+    Route::post('/logout', function (Request $request) {
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logged out']);
+    });
+    
     // User routes
     Route::get('/user', function (Request $request) {
         return response()->json([
@@ -35,6 +39,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             'role' => $request->user()->role
         ]);
     });
+    
     
     // User search endpoint
     Route::get('/users/search', function (Request $request) {

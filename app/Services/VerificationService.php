@@ -1,144 +1,117 @@
 <?php
 
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Scripting/PHPClass.php to edit this template
- */
-
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\LoginAttempt;
+use App\Models\VerificationAttempt;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use App\Notifications\TwoFactorCodeNotification;
 
-/**
- * Description of VerificationService
- *
- * @author IDRISAH
- */
-class VerificationService {
-    public function sendTwoFactorCode(User $user): bool
+class VerificationService
+{
+    public function sendVerificationCode(User $user, LoginAttempt $loginAttempt, array $analysis): void
     {
-        $code = $this->generateTwoFactorCode();
+        $code = $this->generateVerificationCode();
         
-        Cache::put("2fa:{$user->id}", [
+        // Store verification data (expires in 10 minutes)
+        $cacheKey = "verification:{$user->id}:{$loginAttempt->id}";
+        Cache::put($cacheKey, [
             'code' => $code,
-            'expires_at' => now()->addMinutes(10)
-        ], 600);
+            'login_attempt_id' => $loginAttempt->id,
+            'attempts' => 0,
+            'max_attempts' => 3,
+            'expires_at' => now()->addMinutes(10),
+        ], 600); // 10 minutes
         
-        $user->notify(new TwoFactorCodeNotification($code));
+        // Queue verification email
+        Mail::to($user->email)->send(new \App\Mail\LoginVerificationMail($user, $code, $loginAttempt, $analysis));
         
-        return true;
-    }
-    
-    public function verifyTwoFactorCode(User $user, string $code): bool
-    {
-        $stored = Cache::get("2fa:{$user->id}");
-        
-        if (!$stored || $stored['code'] !== $code) {
-            return false;
-        }
-        
-        if (now()->gt($stored['expires_at'])) {
-            Cache::forget("2fa:{$user->id}");
-            return false;
-        }
-        
-        Cache::forget("2fa:{$user->id}");
-        return true;
-    }
-    
-    public function sendEmailVerification(User $user, string $ip): bool
-    {
-        $token = Str::random(64);
-        
-        Cache::put("email_verify:{$token}", [
+        // Log verification attempt
+        VerificationAttempt::create([
             'user_id' => $user->id,
-            'ip' => $ip,
-            'expires_at' => now()->addMinutes(30)
-        ], 1800);
-        
-        $user->notify(new EmailVerificationNotification($token, $ip));
-        
-        return true;
+            'login_attempt_id' => $loginAttempt->id,
+            'verification_method' => 'email_verification',
+            'is_successful' => false, // Not yet verified
+            'verification_data' => [
+                'code_sent' => true,
+                'expires_at' => now()->addMinutes(10)->toDateTimeString(),
+            ],
+            'verified_at' => now(),
+        ]);
     }
     
-    public function verifyEmailToken(string $token, string $ip): ?User
+    public function verifyCode(User $user, int $loginAttemptId, string $code): array
     {
-        $data = Cache::get("email_verify:{$token}");
+        $cacheKey = "verification:{$user->id}:{$loginAttemptId}";
+        $data = Cache::get($cacheKey);
         
-        if (!$data || $data['ip'] !== $ip) {
-            return null;
-        }
-        
-        if (now()->gt($data['expires_at'])) {
-            Cache::forget("email_verify:{$token}");
-            return null;
-        }
-        
-        $user = User::find($data['user_id']);
-        Cache::forget("email_verify:{$token}");
-        
-        return $user;
-    }
-    
-    public function generateSecurityQuestions(User $user): array
-    {
-        $questions = $user->security_questions ?? [];
-        
-        if (empty($questions)) {
-            $questions = $this->getDefaultQuestions();
-            $user->update(['security_questions' => $questions]);
-        }
-        
-        // Return random subset of questions
-        return collect($questions)->random(2)->map(function ($q) {
+        if (!$data) {
             return [
-                'id' => $q['id'],
-                'question' => $q['question']
+                'success' => false,
+                'message' => 'Verification code expired or not found. Please try logging in again.',
+                'remaining_attempts' => 0,
             ];
-        })->toArray();
-    }
-    
-    public function verifySecurityQuestions(User $user, array $answers): bool
-    {
-        $questions = $user->security_questions ?? [];
-        
-        foreach ($answers as $answer) {
-            $question = collect($questions)->firstWhere('id', $answer['question_id']);
-            
-            if (!$question || !Hash::check($answer['answer'], $question['answer_hash'])) {
-                return false;
-            }
         }
         
-        return true;
+        // Check if max attempts reached
+        if ($data['attempts'] >= $data['max_attempts']) {
+            Cache::forget($cacheKey);
+            return [
+                'success' => false,
+                'message' => 'Too many verification attempts. Please try logging in again.',
+                'remaining_attempts' => 0,
+            ];
+        }
+        
+        // Check expiry
+        if (now()->gt($data['expires_at'])) {
+            Cache::forget($cacheKey);
+            return [
+                'success' => false,
+                'message' => 'Verification code has expired. Please try logging in again.',
+                'remaining_attempts' => 0,
+            ];
+        }
+        
+        // Verify code
+        if ($data['code'] !== $code) {
+            $data['attempts']++;
+            Cache::put($cacheKey, $data, 600);
+            
+            $remaining = $data['max_attempts'] - $data['attempts'];
+            return [
+                'success' => false,
+                'message' => 'Invalid verification code.',
+                'remaining_attempts' => $remaining,
+            ];
+        }
+        
+        // Code is valid - mark as verified
+        Cache::forget($cacheKey);
+        
+        // Update verification attempt record
+        VerificationAttempt::where('user_id', $user->id)
+            ->where('login_attempt_id', $loginAttemptId)
+            ->where('is_successful', false)
+            ->update([
+                'is_successful' => true,
+                'verification_data' => [
+                    'verified_at' => now()->toDateTimeString(),
+                    'code' => $code,
+                ],
+            ]);
+        
+        return [
+            'success' => true,
+            'message' => 'Verification successful!',
+            'remaining_attempts' => 0,
+        ];
     }
     
-    private function generateTwoFactorCode(): string
+    private function generateVerificationCode(): string
     {
         return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    }
-    
-    private function getDefaultQuestions(): array
-    {
-        return [
-            [
-                'id' => 1,
-                'question' => 'What is your mother\'s maiden name?',
-                'answer_hash' => null
-            ],
-            [
-                'id' => 2,
-                'question' => 'What was the name of your first pet?',
-                'answer_hash' => null
-            ],
-            [
-                'id' => 3,
-                'question' => 'What city were you born in?',
-                'answer_hash' => null
-            ]
-        ];
     }
 }

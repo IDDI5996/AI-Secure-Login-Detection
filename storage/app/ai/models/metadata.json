@@ -1,0 +1,45 @@
+{
+  "source_csv": "cleaned_dataset.csv",
+  "rows": 435,
+  "feature_columns": [
+    "status",
+    "hour",
+    "day_of_week",
+    "minute",
+    "is_weekend",
+    "login_count_24h",
+    "failed_count_24h",
+    "fail_rate_24h",
+    "unique_ips_24h",
+    "unique_countries_24h",
+    "unique_devices_24h",
+    "ip_freq",
+    "country_freq",
+    "device_type_freq",
+    "browser_freq"
+  ],
+  "column_mapping": {
+    "user_id": "Username",
+    "timestamp": "Attempted At",
+    "ip": "IP Address",
+    "status": "Status",
+    "username": "User Name",
+    "email": "Email",
+    "city": "City",
+    "country": "Country",
+    "device_type": "Device Type",
+    "browser": "Browser",
+    "verification_status": "Verification Status"
+  },
+  "score_stats": {
+    "threshold": 0.0,
+    "decision_min": -0.1607305792017526,
+    "decision_p05": -0.10591139346626222,
+    "decision_p50": 0.05373972002192484,
+    "decision_p95": 0.11993209630733925,
+    "decision_max": 0.141162941918209
+  },
+  "n_estimators": 8,
+  "contamination": "auto",
+  "trained_at": "2026-06-22T23:25:17.690286"
+}

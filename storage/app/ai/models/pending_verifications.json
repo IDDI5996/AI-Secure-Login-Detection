@@ -1,0 +1,17 @@
+{
+    "tokens": {
+        "bc1073393aae829d0fc6544c3142e10fd9e3bb57c22a329ba4eb874ab4dd376f": {
+            "user_id": 2,
+            "email": "iddihemedi11@gmail.com",
+            "username": "Iddi Hemedi",
+            "login_attempt_id": 127,
+            "anomalies": [
+                "model_unavailable",
+                "brute_force"
+            ],
+            "risk_score": 80,
+            "created_at": "2026-06-23T11:42:21.233494Z",
+            "expires_at": "2026-06-23T11:52:21.233918Z"
+        }
+    }
+}

@@ -121,6 +121,13 @@ class AiLoginController extends Controller
                 return redirect()->route('dashboard')->with('success', 'Welcome back!');
             }
             
+            \Log::info('Login analysis result', [
+                'is_suspicious' => $analysis['is_suspicious'],
+                'brute_force_detected' => $analysis['brute_force_detected'],
+                'expects_json' => $request->expectsJson(),
+                'email' => $request->email,
+            ]);
+
         } catch (\Exception $e) {
             \Log::error('Login error: ' . $e->getMessage(), [
                 'file' => $e->getFile(),

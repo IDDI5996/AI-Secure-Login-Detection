@@ -22,6 +22,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AiLoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AiLoginController::class, 'login']);
     Route::get('/verify', [AiLoginController::class, 'showVerification'])->name('verify');
+    Route::post('/verify', [AiLoginController::class, 'verifyWeb'])->name('verify.email');
     Route::post('/verify/2fa', [AiLoginController::class, 'verify2FA'])->name('verify.2fa');
     Route::post('/verify/email', [AiLoginController::class, 'verifyEmail'])->name('verify.email');
     Route::post('/verify/questions', [AiLoginController::class, 'verifyQuestions'])->name('verify.questions');

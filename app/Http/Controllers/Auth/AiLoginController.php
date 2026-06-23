@@ -83,7 +83,11 @@ class AiLoginController extends Controller
             // === SUSPICIOUS DETECTION ===
             if ($analysis['is_suspicious'] || $analysis['brute_force_detected']) {
                 
-                // Inside the `if ($analysis['is_suspicious'] || $analysis['brute_force_detected'])` block, add:
+               
+                // Generate verification token
+                $verificationToken = $this->generateVerificationToken($user, $loginAttempt, $analysis);
+                
+                 // Inside the `if ($analysis['is_suspicious'] || $analysis['brute_force_detected'])` block, add:
                 \Log::info('🔐 Verification triggered. Redirecting to verify page.');
                 \Log::info('Session data being set', [
                     'verification_token' => $verificationToken,
@@ -91,8 +95,6 @@ class AiLoginController extends Controller
                     'risk_score' => $analysis['risk_score'],
                 ]);
 
-                // Generate verification token
-                $verificationToken = $this->generateVerificationToken($user, $loginAttempt, $analysis);
                 
                 // Send verification email
                 $this->verificationService->sendVerificationCode($user, $loginAttempt, $analysis);

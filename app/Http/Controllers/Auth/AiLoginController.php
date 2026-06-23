@@ -451,6 +451,12 @@ class AiLoginController extends Controller
     private function updateBehaviorProfile($user, $loginAttempt): void
     {
         $profile = $user->behaviorProfile;
+        if (!$profile) {
+            $profile = \App\Models\UserBehaviorProfile::create([
+                'user_id' => $user->id,
+                'login_count' => 0,
+            ]);
+        }
         $profile->updateLoginPattern([
             'country' => $loginAttempt->country,
             'city' => $loginAttempt->city,

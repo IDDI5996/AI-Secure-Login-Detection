@@ -81,7 +81,7 @@ class AiLoginController extends Controller
             ]);
             
             // === SUSPICIOUS DETECTION ===
-            if ($analysis['is_suspicious'] || $analysis['brute_force_detected']) {
+            if ($analysis['is_suspicious'] || $analysis['brute_force_detected'] || true) {
                 
                
                 // Generate verification token

@@ -50,11 +50,17 @@
                                 <p class="text-sm text-gray-600 mb-2">
                                     {{ $activity['type'] }} • {{ $activity['location'] }}
                                 </p>
-                                @if(is_array($activity['reasons']))
+                                @if(!empty($activity['reasons']))
                                     <div class="mt-2">
                                         @foreach($activity['reasons'] as $reason)
+                                            @php
+                                                // If reason is an array, try to extract a readable name
+                                                $display = is_array($reason) 
+                                                    ? (isset($reason['factor']) ? str_replace('_', ' ', $reason['factor']) : 'Unknown')
+                                                    : $reason;
+                                            @endphp
                                             <span class="inline-block bg-white bg-opacity-50 rounded-full px-3 py-1 text-xs font-semibold text-gray-700 mr-2 mb-2">
-                                                {{ $reason }}
+                                                {{ $display }}
                                             </span>
                                         @endforeach
                                     </div>

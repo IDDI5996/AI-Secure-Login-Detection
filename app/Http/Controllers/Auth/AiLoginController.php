@@ -26,6 +26,7 @@ class AiLoginController extends Controller
     
     public function login(Request $request)
     {
+        try {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -102,6 +103,20 @@ class AiLoginController extends Controller
             'user' => $user,
             'message' => 'Login successful',
         ]);
+        
+        } catch (\Exception $e) {
+        \Log::error('Login error: ' . $e->getMessage(), [
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json([
+            'error' => 'Server error',
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ], 500);
+      }
     }
     
     public function verifyLogin(Request $request)

@@ -97,6 +97,11 @@ class AiLoginController extends Controller
                 // Send verification email
                 $this->verificationService->sendVerificationCode($user, $loginAttempt, $analysis);
                 
+                \Log::info('📧 Email send attempted', [
+                    'user_email' => $user->email,
+                    'code' => session('verification_code') ?? 'not set', // we don't store code in session, but we can log from the service
+                ]);
+                
                 // Store pending verification
                 $this->storePendingVerification($user, $loginAttempt, $verificationToken, $analysis);
                 

@@ -529,4 +529,9 @@ class AiLoginController extends Controller
         if (str_contains($userAgent, 'Tablet')) return 'Tablet';
         return 'Desktop';
     }
+    
+    public function showLoginForm()
+    {
+        return view('auth.login');
+    }
 }

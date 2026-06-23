@@ -20,7 +20,7 @@ Route::get('/', function () {
 // Public authentication routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AiLoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AiLoginController::class, 'login']);
+    // POST login will be overridden later
     Route::get('/verify', [AiLoginController::class, 'showVerification'])->name('verify');
     Route::post('/verify', [AiLoginController::class, 'verifyWeb'])->name('verify.email');
     Route::post('/verify/2fa', [AiLoginController::class, 'verify2FA'])->name('verify.2fa');
@@ -148,3 +148,7 @@ Route::middleware(['auth', 'security'])->prefix('api/security')->name('api.secur
 });
 
 require __DIR__.'/auth.php';
+
+// ===== OVERRIDE JETSTREAM'S LOGIN POST ROUTE =====
+// This must come AFTER the auth.php include to take precedence.
+Route::post('/login', [AiLoginController::class, 'login'])->name('login.custom');

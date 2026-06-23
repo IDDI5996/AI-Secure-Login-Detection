@@ -28,7 +28,11 @@
                 <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
                     <strong>Risk Score:</strong> {{ $risk_score }}%
                     @if(!empty($reasons))
-                        <br><span class="text-xs">({{ implode(', ', $reasons) }})</span>
+                        <br><span class="text-xs">
+                            ({{ collect($reasons)->map(function($reason) {
+                                return is_array($reason) ? ($reason['factor'] ?? 'Unknown') : $reason;
+                            })->implode(', ') }})
+                        </span>
                     @endif
                 </div>
             @endif

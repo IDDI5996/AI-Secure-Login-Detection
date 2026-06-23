@@ -62,6 +62,16 @@ class AiLoginController extends Controller
             // === AI ANALYSIS ===
             $analysis = $this->aiDetection->analyzeLogin($user, $request);
             
+            // After $analysis = $this->aiDetection->analyzeLogin($user, $request);
+            \Log::info('🔍 AI Analysis Result', [
+                'is_suspicious' => $analysis['is_suspicious'],
+                'brute_force_detected' => $analysis['brute_force_detected'],
+                'risk_score' => $analysis['risk_score'],
+                'factors' => $analysis['factors'],
+                'expects_json' => $request->expectsJson(),
+                'email' => $request->email,
+            ]);
+
             // Update login attempt with AI results
             $loginAttempt->update([
                 'is_successful' => true,
@@ -72,6 +82,15 @@ class AiLoginController extends Controller
             
             // === SUSPICIOUS DETECTION ===
             if ($analysis['is_suspicious'] || $analysis['brute_force_detected']) {
+                
+                // Inside the `if ($analysis['is_suspicious'] || $analysis['brute_force_detected'])` block, add:
+                \Log::info('🔐 Verification triggered. Redirecting to verify page.');
+                \Log::info('Session data being set', [
+                    'verification_token' => $verificationToken,
+                    'login_attempt_id' => $loginAttempt->id,
+                    'risk_score' => $analysis['risk_score'],
+                ]);
+
                 // Generate verification token
                 $verificationToken = $this->generateVerificationToken($user, $loginAttempt, $analysis);
                 
@@ -97,6 +116,10 @@ class AiLoginController extends Controller
                         'verification_methods' => ['email_verification'],
                     ]);
                 } else {
+                    
+                    // In the `else` part (web redirect), add before the redirect:
+                    \Log::info('➡️ Redirecting to verify route');
+                    
                     // Web response: store data in session and redirect to verification page
                     session()->put('verification_token', $verificationToken);
                     session()->put('login_attempt_id', $loginAttempt->id);
@@ -120,13 +143,6 @@ class AiLoginController extends Controller
                 Auth::login($user);
                 return redirect()->route('dashboard')->with('success', 'Welcome back!');
             }
-            
-            \Log::info('Login analysis result', [
-                'is_suspicious' => $analysis['is_suspicious'],
-                'brute_force_detected' => $analysis['brute_force_detected'],
-                'expects_json' => $request->expectsJson(),
-                'email' => $request->email,
-            ]);
 
         } catch (\Exception $e) {
             \Log::error('Login error: ' . $e->getMessage(), [
@@ -152,6 +168,11 @@ class AiLoginController extends Controller
      */
     public function showVerification(Request $request)
     {
+        \Log::info('📄 Verification page displayed', [
+        'token' => session('verification_token'),
+        'attempt_id' => session('login_attempt_id'),
+        ]);
+        
         $token = session('verification_token');
         $attemptId = session('login_attempt_id');
         $riskScore = session('risk_score');

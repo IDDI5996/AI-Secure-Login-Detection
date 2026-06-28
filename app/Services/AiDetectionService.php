@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\TrustedContext;
 
 class AiDetectionService
 {
@@ -21,33 +22,96 @@ class AiDetectionService
     
     public function analyzeLogin(User $user, Request $request): array
     {
-        // 1. Extract features
+        // 1. Check if the current context is already trusted
+        if ($this->isTrustedContext($user, $request)) {
+            return [
+                'risk_score' => 10,
+                'is_suspicious' => false,
+                'factors' => [['factor' => 'trusted_context', 'risk' => 0]],
+                'brute_force_detected' => false,
+            ];
+        }
+
+        // 2. Extract features
         $features = $this->featureExtractor->extract($user, $request);
-        
-        // 2. Call Python model for prediction
+
+        // 3. Call Python model for prediction
         $result = $this->callPythonModel($features);
-        
-        // 3. Check brute force pattern
+
+        // 4. Check brute force pattern
         $bruteForceDetected = $this->detectBruteForce($user);
-        
-        // 4. Combine results
-        $isSuspicious = $result['is_suspicious'] || $bruteForceDetected;
+
+        // 5. Combine results
         $riskScore = $result['risk_score'];
-        
-        // Boost risk score if brute force detected
         if ($bruteForceDetected) {
             $riskScore = max($riskScore, 80);
-            $result['factors'][] = ['factor' => 'brute_force', 'value' => $bruteForceDetected, 'risk' => 1.0];
+            $result['factors'][] = ['factor' => 'brute_force', 'value' => true, 'risk' => 1.0];
         }
-        
+
         return [
             'risk_score' => $riskScore,
-            'is_suspicious' => $isSuspicious,
+            'is_suspicious' => $riskScore >= 80,
             'factors' => $result['factors'] ?? [],
             'features' => $features,
             'model_score' => $result['decision_score'] ?? 0,
             'brute_force_detected' => $bruteForceDetected,
         ];
+    }
+    
+        // ===== Whitelist =====
+
+    private function isTrustedContext(User $user, Request $request): bool
+    {
+        $fingerprint = $this->generateDeviceFingerprint($request);
+        $ipRange = $this->extractIpRange($request->ip());
+        // Get location from the request (or fallback)
+        $location = $this->getLocationFromIp($request->ip());
+        $country = $location['country'] ?? null;
+
+        $trusted = TrustedContext::where('user_id', $user->id)
+            ->where('device_fingerprint', $fingerprint)
+            ->where('ip_range', $ipRange)
+            ->where('country', $country)
+            ->first();
+
+        if ($trusted) {
+            $trusted->update(['last_used_at' => now()]);
+            return true;
+        }
+        return false;
+    }
+    
+    private function generateDeviceFingerprint(Request $request): string
+    {
+        $components = [
+            $request->userAgent(),
+            $request->header('Accept-Language'),
+            $request->header('Accept-Encoding'),
+            $request->ip()
+        ];
+        return hash('sha256', implode('|', $components));
+    }
+
+    private function extractIpRange(string $ip): string
+    {
+        $parts = explode('.', $ip);
+        if (count($parts) >= 3) {
+            return implode('.', array_slice($parts, 0, 3));
+        }
+        return $ip;
+    }
+
+    private function getLocationFromIp(string $ip): array
+    {
+        try {
+            $location = \Stevebauman\Location\Facades\Location::get($ip);
+            return [
+                'country' => $location->countryName ?? 'Unknown',
+                'city' => $location->cityName ?? 'Unknown',
+            ];
+        } catch (\Exception $e) {
+            return ['country' => 'Unknown', 'city' => 'Unknown'];
+        }
     }
     
     private function callPythonModel(array $features): array

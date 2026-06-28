@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use App\Models\VerificationAttempt;
+use App\Models\TrustedContext; // <-- ADD THIS IMPORT
 use App\Services\AiDetectionService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
@@ -62,7 +63,6 @@ class AiLoginController extends Controller
             // === AI ANALYSIS ===
             $analysis = $this->aiDetection->analyzeLogin($user, $request);
             
-            // After $analysis = $this->aiDetection->analyzeLogin($user, $request);
             \Log::info('🔍 AI Analysis Result', [
                 'is_suspicious' => $analysis['is_suspicious'],
                 'brute_force_detected' => $analysis['brute_force_detected'],
@@ -81,13 +81,12 @@ class AiLoginController extends Controller
             ]);
             
             // === SUSPICIOUS DETECTION ===
-            if ($analysis['is_suspicious'] || $analysis['brute_force_detected'] || true) {
+            // Remove the "|| true" after testing to rely on actual conditions
+            if ($analysis['is_suspicious'] || $analysis['brute_force_detected']) {
                 
-               
                 // Generate verification token
                 $verificationToken = $this->generateVerificationToken($user, $loginAttempt, $analysis);
                 
-                 // Inside the `if ($analysis['is_suspicious'] || $analysis['brute_force_detected'])` block, add:
                 \Log::info('🔐 Verification triggered. Redirecting to verify page.');
                 \Log::info('Session data being set', [
                     'verification_token' => $verificationToken,
@@ -95,13 +94,11 @@ class AiLoginController extends Controller
                     'risk_score' => $analysis['risk_score'],
                 ]);
 
-                
                 // Send verification email
                 $this->verificationService->sendVerificationCode($user, $loginAttempt, $analysis);
                 
                 \Log::info('📧 Email send attempted', [
                     'user_email' => $user->email,
-                    'code' => session('verification_code') ?? 'not set', // we don't store code in session, but we can log from the service
                 ]);
                 
                 // Store pending verification
@@ -124,7 +121,6 @@ class AiLoginController extends Controller
                     ]);
                 } else {
                     
-                    // In the `else` part (web redirect), add before the redirect:
                     \Log::info('➡️ Redirecting to verify route');
                     
                     // Web response: store data in session and redirect to verification page
@@ -158,7 +154,6 @@ class AiLoginController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             
-            // If it's a web request, redirect back with error; if API, return JSON
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Server error',
@@ -176,8 +171,8 @@ class AiLoginController extends Controller
     public function showVerification(Request $request)
     {
         \Log::info('📄 Verification page displayed', [
-        'token' => session('verification_token'),
-        'attempt_id' => session('login_attempt_id'),
+            'token' => session('verification_token'),
+            'attempt_id' => session('login_attempt_id'),
         ]);
         
         $token = session('verification_token');
@@ -242,6 +237,9 @@ class AiLoginController extends Controller
         // Complete login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
+        // ===== STORE TRUSTED CONTEXT =====
+        $this->storeTrustedContext($user, $loginAttempt);
+        
         // Clear session data
         session()->forget(['verification_token', 'login_attempt_id', 'risk_score', 'reasons']);
         
@@ -251,7 +249,7 @@ class AiLoginController extends Controller
         return redirect()->route('dashboard')->with('success', 'Verification successful. You are now logged in.');
     }
     
-    // ===== API verification endpoint (unchanged) =====
+    // ===== API verification endpoint =====
     public function verifyLogin(Request $request)
     {
         $request->validate([
@@ -299,6 +297,9 @@ class AiLoginController extends Controller
         // Complete login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
+        // ===== STORE TRUSTED CONTEXT =====
+        $this->storeTrustedContext($user, $loginAttempt);
+        
         return response()->json([
             'token' => $user->createToken('auth_token')->plainTextToken,
             'user' => $user,
@@ -306,7 +307,7 @@ class AiLoginController extends Controller
         ]);
     }
     
-    // ===== Helper methods (unchanged) =====
+    // ===== Helper methods =====
     private function generateVerificationToken($user, $loginAttempt, $analysis): string
     {
         $data = [
@@ -406,10 +407,7 @@ class AiLoginController extends Controller
             'activity_type' => 'brute_force_attempt',
             'activity_data' => [
                 'ip_address' => $loginAttempt->ip_address,
-                'attempt_count' => LoginAttempt::where('user_id', $user->id)
-                    ->where('is_successful', false)
-                    ->where('attempted_at', '>=', now()->subMinutes(5))
-                    ->count(),
+                'attempt_count' => $attemptCount,
                 'location' => "{$loginAttempt->city}, {$loginAttempt->country}",
             ],
             'risk_score' => 0.9,
@@ -466,7 +464,7 @@ class AiLoginController extends Controller
     
     private function clearFailedAttempts($user): void
     {
-        // Your implementation (if any)
+        // Implement if needed
     }
     
     private function getRealClientIp(Request $request): string
@@ -533,5 +531,37 @@ class AiLoginController extends Controller
     public function showLoginForm()
     {
         return view('auth.login');
+    }
+    
+    // ===== TRUSTED CONTEXT METHODS =====
+    private function storeTrustedContext(User $user, LoginAttempt $loginAttempt): void
+    {
+        $fingerprint = $this->generateDeviceFingerprintFromAttempt($loginAttempt);
+        $ipRange = substr($loginAttempt->ip_address, 0, strrpos($loginAttempt->ip_address, '.'));
+        
+        TrustedContext::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'device_fingerprint' => $fingerprint,
+                'ip_range' => $ipRange,
+                'country' => $loginAttempt->country,
+            ],
+            [
+                'city' => $loginAttempt->city,
+                'browser' => $loginAttempt->browser,
+                'platform' => $loginAttempt->platform,
+                'device_type' => $loginAttempt->device_type,
+                'last_used_at' => now(),
+            ]
+        );
+    }
+    
+    private function generateDeviceFingerprintFromAttempt(LoginAttempt $attempt): string
+    {
+        $components = [
+            $attempt->user_agent,
+            $attempt->ip_address,
+        ];
+        return hash('sha256', implode('|', $components));
     }
 }

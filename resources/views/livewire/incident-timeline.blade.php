@@ -68,14 +68,24 @@
                                     <p class="text-sm font-medium text-gray-900 mb-1">{{ $incident['type'] }}</p>
                                     <p class="text-sm text-gray-600 mb-2">{{ $incident['description'] }}</p>
                                     
+                                    <!-- ✅ FIXED DETECTION REASONS LOOP -->
                                     @if(!empty($incident['detection_reasons']))
-                                        <div class="flex flex-wrap gap-1 mb-3">
-                                            @foreach($incident['detection_reasons'] as $reason)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ $reason }}
-                                                </span>
-                                            @endforeach
-                                        </div>
+                                        @php
+                                            $flatReasons = collect($incident['detection_reasons'])
+                                                ->flatten()
+                                                ->filter(fn($item) => is_string($item) && trim($item) !== '')
+                                                ->values()
+                                                ->all();
+                                        @endphp
+                                        @if(count($flatReasons) > 0)
+                                            <div class="flex flex-wrap gap-1 mb-3">
+                                                @foreach($flatReasons as $reason)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                        {{ $reason }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     @endif
                                     
                                     <!-- Risk score bar -->
@@ -135,4 +145,4 @@
         });
     </script>
     @endscript
-</div>
+</div>S

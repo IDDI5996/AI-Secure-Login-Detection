@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LoginAttempt;
 use App\Models\SuspiciousActivity;
 use App\Models\VerificationAttempt;
-use App\Models\TrustedContext; // <-- ADD THIS IMPORT
+use App\Models\TrustedContext;
 use App\Services\AiDetectionService;
 use App\Services\VerificationService;
 use Illuminate\Http\Request;
@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
-
 
 class AiLoginController extends Controller
 {
@@ -61,6 +60,63 @@ class AiLoginController extends Controller
                     'email' => ['The provided credentials are incorrect.'],
                 ]);
             }
+
+            // =============================================
+            // 🔒 USER STATUS CHECKS – ENFORCED HERE
+            // =============================================
+            
+            // 1. Check if user is ACTIVE
+            if (!$user->is_active) {
+                $loginAttempt->update(['is_successful' => false]);
+                
+                \Log::warning('Login attempt by inactive user', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'ip' => $realIp,
+                ]);
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Account deactivated',
+                        'message' => 'Your account has been deactivated. Please contact support.'
+                    ], 403);
+                }
+                
+                throw ValidationException::withMessages([
+                    'email' => ['Your account has been deactivated. Please contact support.'],
+                ]);
+            }
+            
+            // 2. Check if user is LOCKED
+            if ($user->is_locked) {
+                $loginAttempt->update(['is_successful' => false]);
+                
+                $reason = $user->lock_reason ? " Reason: {$user->lock_reason}" : '';
+                
+                \Log::warning('Login attempt by locked user', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'lock_reason' => $user->lock_reason,
+                    'ip' => $realIp,
+                ]);
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Account locked',
+                        'message' => "Your account has been locked.{$reason} Please contact support.",
+                        'locked_at' => $user->locked_at,
+                        'lock_reason' => $user->lock_reason,
+                    ], 403);
+                }
+                
+                throw ValidationException::withMessages([
+                    'email' => ["Your account has been locked.{$reason} Please contact support."],
+                ]);
+            }
+            
+            // =============================================
+            // ✅ User is ACTIVE and NOT LOCKED – proceed
+            // =============================================
             
             // === AI ANALYSIS ===
             $analysis = $this->aiDetection->analyzeLogin($user, $request);
@@ -83,7 +139,6 @@ class AiLoginController extends Controller
             ]);
             
             // === SUSPICIOUS DETECTION ===
-            // Remove the "|| true" after testing to rely on actual conditions
             if ($analysis['is_suspicious'] || $analysis['brute_force_detected']) {
                 
                 // Generate verification token
@@ -149,6 +204,9 @@ class AiLoginController extends Controller
                 return redirect()->route('dashboard')->with('success', 'Welcome back!');
             }
 
+        } catch (ValidationException $e) {
+            // ✅ Re-throw validation exceptions so Laravel displays the error messages
+            throw $e;
         } catch (\Exception $e) {
             \Log::error('Login error: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
@@ -159,11 +217,13 @@ class AiLoginController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Server error',
-                    'message' => $e->getMessage(),
+                    'message' => 'An unexpected error occurred. Please try again later.',
                 ], 500);
-            } else {
-                return back()->withErrors(['email' => 'An error occurred. Please try again.'])->withInput();
             }
+            
+            return back()->withErrors([
+                'email' => 'An unexpected error occurred. Please try again.'
+            ])->withInput();
         }
     }
     
@@ -239,7 +299,7 @@ class AiLoginController extends Controller
         // Complete login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
-        // ===== STORE TRUSTED CONTEXT =====
+        // Store trusted context
         $this->storeTrustedContext($user, $loginAttempt);
         
         // Clear session data
@@ -299,7 +359,7 @@ class AiLoginController extends Controller
         // Complete login
         $this->handleSuccessfulLogin($user, $loginAttempt);
         
-        // ===== STORE TRUSTED CONTEXT =====
+        // Store trusted context
         $this->storeTrustedContext($user, $loginAttempt);
         
         return response()->json([
@@ -395,13 +455,15 @@ class AiLoginController extends Controller
     
     private function handleBruteForceDetection($user, $loginAttempt): void
     {
+        $attemptCount = LoginAttempt::where('user_id', $user->id)
+            ->where('is_successful', false)
+            ->where('attempted_at', '>=', now()->subMinutes(5))
+            ->count();
+        
         \Log::warning('Brute force attempt detected', [
             'user_id' => $user->id,
             'ip' => $loginAttempt->ip_address,
-            'attempt_count' => LoginAttempt::where('user_id', $user->id)
-                ->where('is_successful', false)
-                ->where('attempted_at', '>=', now()->subMinutes(5))
-                ->count(),
+            'attempt_count' => $attemptCount,
         ]);
         
         SuspiciousActivity::create([
@@ -466,7 +528,7 @@ class AiLoginController extends Controller
     
     private function clearFailedAttempts($user): void
     {
-        // Implement if needed
+        // Implement if needed – clear failed attempts after successful login
     }
     
     private function getRealClientIp(Request $request): string

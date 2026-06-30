@@ -10,6 +10,11 @@
             <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/database/migrations/2025_12_23_202259_add_security_fields_to_users_table.php</file>
             <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/routes/api.php</file>
             <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/resources/views/components/validation-errors.blade.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/resources/views/admin/security-logs.blade.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/resources/views/dashboard.blade.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/routes/web.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/app/Http/Controllers/Admin/UserManagementController.php</file>
+            <file>file:/home/zinfai/projects/AI-Secure-Login-Detection/resources/views/admin/user-management.blade.php</file>
         </group>
     </open-files>
 </project-private>

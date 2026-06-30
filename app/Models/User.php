@@ -41,7 +41,7 @@ class User extends Authenticatable
         'security_questions',
         'trusted_devices',
         'login_notifications',
-        
+        'is_active',
         'is_locked',
         'locked_at',
         'locked_by',

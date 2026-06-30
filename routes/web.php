@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\AiLoginController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Security\SecurityActionsController;
@@ -11,7 +10,7 @@ use App\Http\Controllers\DashboardController as MainDashboardController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Lecturer\NoteController as LecturerNoteController;
 use App\Http\Controllers\Student\NoteController as StudentNoteController;
-
+use App\Http\Controllers\Admin\UserManagementController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -30,6 +29,7 @@ Route::middleware('guest')->group(function () {
 
 // Authenticated routes
 Route::middleware(['auth'])->group(function () {
+    //Main Admin dashboard
     Route::get('/dashboard', [MainDashboardController::class, 'index'])->name('dashboard');
     
     // Admin routes
@@ -49,6 +49,29 @@ Route::middleware(['auth'])->group(function () {
         //Security Logs
         Route::get('/security-logs', [AdminDashboardController::class, 'securityLogs'])->name('security-logs');
         Route::get('/security-logs/correlated', [AdminDashboardController::class, 'getCorrelatedEvents'])->name('security-logs.correlated');
+        
+         // User Management Routes
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [UserManagementController::class, 'index'])->name('index');
+            Route::get('/{id}', [UserManagementController::class, 'show'])->name('show');
+            Route::post('/{id}/toggle-active', [UserManagementController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{id}/toggle-lock', [UserManagementController::class, 'toggleLock'])->name('toggle-lock');
+            Route::delete('/{id}', [UserManagementController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/restore', [UserManagementController::class, 'restore'])->name('restore');
+            Route::put('/{id}/role', [UserManagementController::class, 'updateRole'])->name('update-role');
+            Route::post('/{id}/send-verification', [UserManagementController::class, 'sendVerification'])->name('send-verification');
+            Route::get('/{id}/login-history', [UserManagementController::class, 'loginHistory'])->name('login-history');
+            Route::post('/bulk-action', [UserManagementController::class, 'bulkAction'])->name('bulk-action');
+            Route::get('/export/csv', [UserManagementController::class, 'export'])->name('export');
+        });
+
+        // IP Blocking Routes
+        Route::prefix('ips')->name('ips.')->group(function () {
+            Route::post('/block', [UserManagementController::class, 'blockIp'])->name('block');
+            Route::post('/{id}/unblock', [UserManagementController::class, 'unblockIp'])->name('unblock');
+            Route::get('/blocked', [UserManagementController::class, 'getBlockedIps'])->name('blocked');
+        });
+    
     });
     
     // Security-specific routes

@@ -45,6 +45,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/suspicious-activities/{id}', [AdminDashboardController::class, 'updateActivity'])->name('update-activity');
         Route::get('/risk-report', [AdminDashboardController::class, 'riskReport'])->name('risk-report');
         Route::get('/export-audit-log', [AuditLogController::class, 'export'])->name('export-audit-log');
+        
+        //Security Logs
+        Route::get('/security-logs', [AdminDashboardController::class, 'securityLogs'])->name('security-logs');
+        Route::get('/security-logs/correlated', [AdminDashboardController::class, 'getCorrelatedEvents'])->name('security-logs.correlated');
     });
     
     // Security-specific routes

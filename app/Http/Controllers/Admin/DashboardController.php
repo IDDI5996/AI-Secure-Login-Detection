@@ -454,153 +454,281 @@ protected function handleExport(Request $request)
         return $recommendations;
     }
 
-protected function getRiskReportData($startDate, $endDate)
-{
-    // Get login attempts within date range
-    $attempts = LoginAttempt::whereBetween('created_at', [
-        Carbon::parse($startDate)->startOfDay(),
-        Carbon::parse($endDate)->endOfDay()
-    ])->get();
-    
-    // Calculate statistics
-    $totalAttempts = $attempts->count();
-    $successfulAttempts = $attempts->where('is_successful', true)->count();
-    $suspiciousAttempts = $attempts->where('is_suspicious', true)->count();
-    $successRate = $totalAttempts > 0 ? ($successfulAttempts / $totalAttempts) * 100 : 0;
-    $suspiciousRate = $totalAttempts > 0 ? ($suspiciousAttempts / $totalAttempts) * 100 : 0;
-    
-    // Top risky IPs
-    $riskyIPs = LoginAttempt::select('ip_address')
-        ->selectRaw('COUNT(*) as attempt_count')
-        ->selectRaw('AVG(risk_score) as avg_risk_score')
-        ->whereBetween('created_at', [
+    protected function getRiskReportData($startDate, $endDate)
+    {
+        // Get login attempts within date range
+        $attempts = LoginAttempt::whereBetween('created_at', [
             Carbon::parse($startDate)->startOfDay(),
             Carbon::parse($endDate)->endOfDay()
-        ])
-        ->groupBy('ip_address')
-        ->havingRaw('AVG(risk_score) > 0.3')
-        ->orderBy('avg_risk_score', 'desc')
-        ->limit(10)
-        ->get();
-    
-    // Daily trend
-    $dailyTrend = LoginAttempt::selectRaw('DATE(created_at) as date')
-        ->selectRaw('COUNT(*) as total_attempts')
-        ->selectRaw('SUM(CASE WHEN is_suspicious = 1 THEN 1 ELSE 0 END) as suspicious_attempts')
-        ->selectRaw('AVG(risk_score) as avg_risk')
-        ->whereBetween('created_at', [
-            Carbon::parse($startDate)->startOfDay(),
-            Carbon::parse($endDate)->endOfDay()
-        ])
-        ->groupBy('date')
-        ->orderBy('date')
-        ->get();
-    
-    // Top countries with suspicious attempts
-    $countryRisk = LoginAttempt::select('country')
-        ->selectRaw('COUNT(*) as total_attempts')
-        ->selectRaw('SUM(CASE WHEN is_suspicious = 1 THEN 1 ELSE 0 END) as suspicious_attempts')
-        ->selectRaw('AVG(risk_score) as avg_risk_score')
-        ->whereBetween('created_at', [
-            Carbon::parse($startDate)->startOfDay(),
-            Carbon::parse($endDate)->endOfDay()
-        ])
-        ->whereNotNull('country')
-        ->groupBy('country')
-        ->orderBy('avg_risk_score', 'desc')
-        ->limit(10)
-        ->get();
-    
-    return [
-        'totalAttempts' => $totalAttempts,
-        'successfulAttempts' => $successfulAttempts,
-        'suspiciousAttempts' => $suspiciousAttempts,
-        'successRate' => $successRate,
-        'suspiciousRate' => $suspiciousRate,
-        'riskyIPs' => $riskyIPs,
-        'dailyTrend' => $dailyTrend,
-        'countryRisk' => $countryRisk,
-    ];
-}
+        ])->get();
 
-protected function exportRiskReport(Request $request)
-{
-    // First, install required packages:
-    // composer require barryvdh/laravel-dompdf
-    // composer require league/csv
-    
-    $format = $request->input('export', 'pdf');
-    $startDate = $request->input('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-    $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
-    
-    $data = $this->getRiskReportData($startDate, $endDate);
-    $data['startDate'] = $startDate;
-    $data['endDate'] = $endDate;
-    
-    if ($format === 'csv') {
-        return $this->exportRiskReportToCsv($data);
-    }
-    
-    return $this->exportRiskReportToPdf($data);
-}
+        // Calculate statistics
+        $totalAttempts = $attempts->count();
+        $successfulAttempts = $attempts->where('is_successful', true)->count();
+        $suspiciousAttempts = $attempts->where('is_suspicious', true)->count();
+        $successRate = $totalAttempts > 0 ? ($successfulAttempts / $totalAttempts) * 100 : 0;
+        $suspiciousRate = $totalAttempts > 0 ? ($suspiciousAttempts / $totalAttempts) * 100 : 0;
 
-protected function exportRiskReportToPdf($data)
-{
-    // Load PDF facade (make sure it's installed)
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.exports.risk-report-pdf', $data);
-    
-    $filename = 'risk-report-' . date('Y-m-d-H-i-s') . '.pdf';
-    
-    return $pdf->download($filename);
-}
+        // Top risky IPs
+        $riskyIPs = LoginAttempt::select('ip_address')
+            ->selectRaw('COUNT(*) as attempt_count')
+            ->selectRaw('AVG(risk_score) as avg_risk_score')
+            ->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
+            ->groupBy('ip_address')
+            ->havingRaw('AVG(risk_score) > 0.3')
+            ->orderBy('avg_risk_score', 'desc')
+            ->limit(10)
+            ->get();
 
-protected function exportRiskReportToCsv($data)
-{
-    // Create CSV content
-    $csvContent = "Risk Assessment Report\n";
-    $csvContent .= "Generated on: " . date('F d, Y H:i:s') . "\n";
-    $csvContent .= "Report Period: " . \Carbon\Carbon::parse($data['startDate'])->format('M d, Y') . 
-                   " - " . \Carbon\Carbon::parse($data['endDate'])->format('M d, Y') . "\n\n";
-    
-    $csvContent .= "SUMMARY\n";
-    $csvContent .= "Total Login Attempts," . $data['totalAttempts'] . "\n";
-    $csvContent .= "Successful Attempts," . $data['successfulAttempts'] . "\n";
-    $csvContent .= "Suspicious Attempts," . $data['suspiciousAttempts'] . "\n";
-    $csvContent .= "Success Rate," . number_format($data['successRate'], 2) . "%\n";
-    $csvContent .= "Suspicious Rate," . number_format($data['suspiciousRate'], 2) . "%\n\n";
-    
-    $csvContent .= "TOP RISKY IP ADDRESSES\n";
-    $csvContent .= "IP Address,Attempt Count,Average Risk Score\n";
-    foreach ($data['riskyIPs'] as $ip) {
-        $csvContent .= $ip->ip_address . "," . $ip->attempt_count . "," . 
-                      number_format($ip->avg_risk_score * 100, 2) . "%\n";
+        // Daily trend
+        $dailyTrend = LoginAttempt::selectRaw('DATE(created_at) as date')
+            ->selectRaw('COUNT(*) as total_attempts')
+            ->selectRaw('SUM(CASE WHEN is_suspicious = 1 THEN 1 ELSE 0 END) as suspicious_attempts')
+            ->selectRaw('AVG(risk_score) as avg_risk')
+            ->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // Top countries with suspicious attempts
+        $countryRisk = LoginAttempt::select('country')
+            ->selectRaw('COUNT(*) as total_attempts')
+            ->selectRaw('SUM(CASE WHEN is_suspicious = 1 THEN 1 ELSE 0 END) as suspicious_attempts')
+            ->selectRaw('AVG(risk_score) as avg_risk_score')
+            ->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
+            ->whereNotNull('country')
+            ->groupBy('country')
+            ->orderBy('avg_risk_score', 'desc')
+            ->limit(10)
+            ->get();
+
+        return [
+            'totalAttempts' => $totalAttempts,
+            'successfulAttempts' => $successfulAttempts,
+            'suspiciousAttempts' => $suspiciousAttempts,
+            'successRate' => $successRate,
+            'suspiciousRate' => $suspiciousRate,
+            'riskyIPs' => $riskyIPs,
+            'dailyTrend' => $dailyTrend,
+            'countryRisk' => $countryRisk,
+        ];
     }
-    $csvContent .= "\n";
-    
-    $csvContent .= "RISK BY COUNTRY\n";
-    $csvContent .= "Country,Total Attempts,Suspicious Attempts,Average Risk Score\n";
-    foreach ($data['countryRisk'] as $country) {
-        $csvContent .= ($country->country ?? 'Unknown') . "," . 
-                      $country->total_attempts . "," . 
-                      $country->suspicious_attempts . "," . 
-                      number_format($country->avg_risk_score * 100, 2) . "%\n";
+
+    protected function exportRiskReport(Request $request)
+    {
+        // First, install required packages:
+        // composer require barryvdh/laravel-dompdf
+        // composer require league/csv
+
+        $format = $request->input('export', 'pdf');
+        $startDate = $request->input('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
+
+        $data = $this->getRiskReportData($startDate, $endDate);
+        $data['startDate'] = $startDate;
+        $data['endDate'] = $endDate;
+
+        if ($format === 'csv') {
+            return $this->exportRiskReportToCsv($data);
+        }
+
+        return $this->exportRiskReportToPdf($data);
     }
-    $csvContent .= "\n";
-    
-    $csvContent .= "DAILY LOGIN TREND\n";
-    $csvContent .= "Date,Total Attempts,Suspicious Attempts,Average Risk\n";
-    foreach ($data['dailyTrend'] as $day) {
-        $csvContent .= $day->date . "," . 
-                      $day->total_attempts . "," . 
-                      $day->suspicious_attempts . "," . 
-                      number_format($day->avg_risk * 100, 2) . "%\n";
+
+    protected function exportRiskReportToPdf($data)
+    {
+        // Load PDF facade (make sure it's installed)
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.exports.risk-report-pdf', $data);
+
+        $filename = 'risk-report-' . date('Y-m-d-H-i-s') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    protected function exportRiskReportToCsv($data)
+    {
+        // Create CSV content
+        $csvContent = "Risk Assessment Report\n";
+        $csvContent .= "Generated on: " . date('F d, Y H:i:s') . "\n";
+        $csvContent .= "Report Period: " . \Carbon\Carbon::parse($data['startDate'])->format('M d, Y') . 
+                       " - " . \Carbon\Carbon::parse($data['endDate'])->format('M d, Y') . "\n\n";
+
+        $csvContent .= "SUMMARY\n";
+        $csvContent .= "Total Login Attempts," . $data['totalAttempts'] . "\n";
+        $csvContent .= "Successful Attempts," . $data['successfulAttempts'] . "\n";
+        $csvContent .= "Suspicious Attempts," . $data['suspiciousAttempts'] . "\n";
+        $csvContent .= "Success Rate," . number_format($data['successRate'], 2) . "%\n";
+        $csvContent .= "Suspicious Rate," . number_format($data['suspiciousRate'], 2) . "%\n\n";
+
+        $csvContent .= "TOP RISKY IP ADDRESSES\n";
+        $csvContent .= "IP Address,Attempt Count,Average Risk Score\n";
+        foreach ($data['riskyIPs'] as $ip) {
+            $csvContent .= $ip->ip_address . "," . $ip->attempt_count . "," . 
+                          number_format($ip->avg_risk_score * 100, 2) . "%\n";
+        }
+        $csvContent .= "\n";
+
+        $csvContent .= "RISK BY COUNTRY\n";
+        $csvContent .= "Country,Total Attempts,Suspicious Attempts,Average Risk Score\n";
+        foreach ($data['countryRisk'] as $country) {
+            $csvContent .= ($country->country ?? 'Unknown') . "," . 
+                          $country->total_attempts . "," . 
+                          $country->suspicious_attempts . "," . 
+                          number_format($country->avg_risk_score * 100, 2) . "%\n";
+        }
+        $csvContent .= "\n";
+
+        $csvContent .= "DAILY LOGIN TREND\n";
+        $csvContent .= "Date,Total Attempts,Suspicious Attempts,Average Risk\n";
+        foreach ($data['dailyTrend'] as $day) {
+            $csvContent .= $day->date . "," . 
+                          $day->total_attempts . "," . 
+                          $day->suspicious_attempts . "," . 
+                          number_format($day->avg_risk * 100, 2) . "%\n";
+        }
+
+        $filename = 'risk-report-' . date('Y-m-d-H-i-s') . '.csv';
+
+        return response($csvContent, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
     
-    $filename = 'risk-report-' . date('Y-m-d-H-i-s') . '.csv';
-    
-    return response($csvContent, 200, [
-        'Content-Type' => 'text/csv',
-        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-    ]);
-}
+    /**
+     * Display unified security logs with advanced filtering and correlation
+     */
+    public function securityLogs(Request $request)
+    {
+        // Build the base query
+        $query = DB::table('login_attempts')
+            ->leftJoin('users', 'login_attempts.user_id', '=', 'users.id')
+            ->select(
+                'login_attempts.id',
+                'login_attempts.user_id',
+                'users.name as user_name',
+                'users.email as user_email',
+                'login_attempts.ip_address',
+                'login_attempts.country',
+                'login_attempts.city',
+                'login_attempts.browser',
+                'login_attempts.platform',
+                'login_attempts.device_type',
+                'login_attempts.is_successful',
+                'login_attempts.is_suspicious',
+                'login_attempts.risk_score',
+                'login_attempts.detection_factors',
+                'login_attempts.email as attempted_email',
+                'login_attempts.attempted_at as occurred_at',
+                DB::raw("'login_attempt' as event_type")
+            );
+
+        // Apply filters
+        if ($request->filled('search')) {
+            $search = '%' . $request->search . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'LIKE', $search)
+                  ->orWhere('users.email', 'LIKE', $search)
+                  ->orWhere('login_attempts.ip_address', 'LIKE', $search)
+                  ->orWhere('login_attempts.email', 'LIKE', $search)
+                  ->orWhere('login_attempts.country', 'LIKE', $search);
+            });
+        }
+
+        if ($request->filled('event_type')) {
+            if ($request->event_type === 'suspicious') {
+                $query->where('is_suspicious', 1);
+            } elseif ($request->event_type === 'failed') {
+                $query->where('is_successful', 0);
+            } elseif ($request->event_type === 'successful') {
+                $query->where('is_successful', 1);
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('attempted_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('attempted_at', '<=', $request->date_to);
+        }
+
+        // Get paginated results
+        $logs = $query->orderBy('occurred_at', 'desc')
+            ->paginate($request->get('per_page', 25))
+            ->withQueryString();
+
+        // Calculate statistics
+        $stats = [
+            'total' => DB::table('login_attempts')->count(),
+            'today' => DB::table('login_attempts')->whereDate('attempted_at', today())->count(),
+            'suspicious' => DB::table('login_attempts')->where('is_suspicious', 1)->count(),
+            'failed' => DB::table('login_attempts')->where('is_successful', 0)->count(),
+            'successful' => DB::table('login_attempts')->where('is_successful', 1)->count(),
+            'avg_risk' => DB::table('login_attempts')->avg('risk_score') * 100 ?? 0,
+            'unique_ips' => DB::table('login_attempts')->distinct('ip_address')->count('ip_address'),
+        ];
+
+        // Get correlated events (grouped by IP for the last 24 hours)
+        $correlatedEvents = DB::table('login_attempts')
+            ->select(
+                'ip_address',
+                DB::raw('COUNT(*) as total_attempts'),
+                DB::raw('SUM(CASE WHEN is_successful = 1 THEN 1 ELSE 0 END) as successful_count'),
+                DB::raw('SUM(CASE WHEN is_suspicious = 1 THEN 1 ELSE 0 END) as suspicious_count'),
+                DB::raw('MAX(attempted_at) as last_attempt'),
+                DB::raw('MIN(attempted_at) as first_attempt')
+            )
+            ->where('attempted_at', '>=', now()->subHours(24))
+            ->groupBy('ip_address')
+            ->having('total_attempts', '>', 1)
+            ->orderBy('total_attempts', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('admin.security-logs', compact('logs', 'stats', 'correlatedEvents'));
+    }
+
+    /**
+     * Get correlated events for a specific IP or user
+     */
+    public function getCorrelatedEvents(Request $request)
+    {
+        $type = $request->type;
+        $value = $request->value;
+
+        $query = DB::table('login_attempts')
+            ->leftJoin('users', 'login_attempts.user_id', '=', 'users.id')
+            ->select(
+                'login_attempts.*',
+                'users.name as user_name',
+                'users.email as user_email'
+            )
+            ->orderBy('attempted_at', 'desc');
+
+        if ($type === 'ip') {
+            $query->where('ip_address', $value);
+        } elseif ($type === 'user') {
+            $query->where('user_id', $value);
+        } elseif ($type === 'email') {
+            $query->where('email', $value);
+        }
+
+        $events = $query->limit(20)->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $events,
+            'type' => $type,
+            'value' => $value
+        ]);
+    }
 }

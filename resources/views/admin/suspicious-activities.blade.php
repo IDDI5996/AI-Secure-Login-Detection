@@ -144,8 +144,25 @@
                                             {{ number_format($riskScore, 1) }}%
                                         </span>
                                         <div class="text-xs text-gray-500 mt-1">
-                                            @if(is_array($activity->detection_reasons))
-                                                {{ implode(', ', array_slice($activity->detection_reasons, 0, 2)) }}
+                                            @php
+                                                $reasons = $activity->detection_reasons;
+                                                // Decode JSON if it's a string
+                                                if (is_string($reasons)) {
+                                                    $reasons = json_decode($reasons, true) ?? [];
+                                                }
+                                                // Ensure it's an array
+                                                if (!is_array($reasons)) {
+                                                    $reasons = [];
+                                                }
+                                                // Flatten nested arrays and keep only non-empty strings
+                                                $flatReasons = collect($reasons)
+                                                    ->flatten()
+                                                    ->filter(fn($item) => is_string($item) && trim($item) !== '')
+                                                    ->take(2)
+                                                    ->all();
+                                            @endphp
+                                            @if(!empty($flatReasons))
+                                                {{ implode(', ', $flatReasons) }}
                                             @endif
                                         </div>
                                     </td>
@@ -287,206 +304,206 @@
         </div>
     </div>
 
-<!-- JavaScript for Modal -->
-<script>
-    function showActivityDetails(activityId) {
-        // Show loading
-        document.getElementById('modalContent').innerHTML = `
-            <div class="text-center py-8">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p class="mt-4 text-gray-500">Loading activity details...</p>
-                <p class="text-xs text-gray-400 mt-1">ID: ${activityId}</p>
-            </div>
-        `;
-        
-        // Show modal
-        document.getElementById('activityModal').classList.remove('hidden');
-        
-        // Get CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        // Fetch activity details
-        fetch(`/admin/suspicious-activity/${activityId}/details`, {
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || `HTTP error! status: ${response.status}`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            console.log('API Result:', result);
-            
-            if (!result.success) {
-                throw new Error(result.error || 'Unknown error occurred');
-            }
-            
-            const activity = result.data;
-            const riskScore = activity.risk_score * 100;
-            
-            // Format activity data safely
-            const activityData = activity.activity_data || {};
-            const user = activity.user || {};
-            const reviewer = activity.reviewer || {};
-            const detectionReasons = Array.isArray(activity.detection_reasons) ? activity.detection_reasons : [];
-            
-            let modalHtml = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- User Info -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-900 mb-2">User Information</h4>
-                        <p class="text-sm text-gray-600"><strong>Name:</strong> ${user.name || 'Unknown'}</p>
-                        <p class="text-sm text-gray-600"><strong>Email:</strong> ${user.email || 'N/A'}</p>
-                        <p class="text-sm text-gray-600"><strong>User ID:</strong> ${activity.user_id}</p>
-                    </div>
-                    
-                    <!-- Activity Info -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-900 mb-2">Activity Information</h4>
-                        <p class="text-sm text-gray-600"><strong>Type:</strong> ${(activity.activity_type || '').replace(/_/g, ' ')}</p>
-                        <p class="text-sm text-gray-600"><strong>Status:</strong> <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColorClass(activity.status)}">${(activity.status || '').replace(/_/g, ' ')}</span></p>
-                        <p class="text-sm text-gray-600"><strong>Risk Score:</strong> <span class="font-semibold ${getRiskColorClass(riskScore)}">${riskScore.toFixed(1)}%</span></p>
-                    </div>
-                    
-                    <!-- Location Info -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-900 mb-2">Location Information</h4>
-                        <p class="text-sm text-gray-600"><strong>IP Address:</strong> ${activityData.ip_address || 'N/A'}</p>
-                        <p class="text-sm text-gray-600"><strong>Location:</strong> ${activityData.location || 'Unknown'}</p>
-                        <p class="text-sm text-gray-600"><strong>Device:</strong> ${activityData.device || 'Unknown'} (${activityData.browser || 'Unknown'})</p>
-                    </div>
-                    
-                    <!-- Timestamps -->
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-900 mb-2">Timestamps</h4>
-                        <p class="text-sm text-gray-600"><strong>Detected:</strong> ${formatDate(activity.created_at)}</p>
-                        ${activity.reviewed_at ? `<p class="text-sm text-gray-600"><strong>Reviewed:</strong> ${formatDate(activity.reviewed_at)}</p>` : ''}
-                        ${reviewer.name ? `<p class="text-sm text-gray-600"><strong>Reviewed By:</strong> ${reviewer.name}</p>` : ''}
-                    </div>
+    <!-- JavaScript for Modal -->
+    <script>
+        function showActivityDetails(activityId) {
+            // Show loading
+            document.getElementById('modalContent').innerHTML = `
+                <div class="text-center py-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                    <p class="mt-4 text-gray-500">Loading activity details...</p>
+                    <p class="text-xs text-gray-400 mt-1">ID: ${activityId}</p>
                 </div>
+            `;
+            
+            // Show modal
+            document.getElementById('activityModal').classList.remove('hidden');
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // Fetch activity details
+            fetch(`/admin/suspicious-activity/${activityId}/details`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                console.log('API Result:', result);
                 
-                <!-- Detection Reasons -->
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="font-medium text-gray-900 mb-2">Detection Reasons</h4>
-                    <div class="flex flex-wrap gap-2">
-            `;
-            
-            if (detectionReasons.length > 0) {
-                detectionReasons.forEach(reason => {
-                    modalHtml += `<span class="inline-block bg-white px-3 py-1 rounded-full text-xs text-gray-700 border">${reason}</span>`;
-                });
-            } else {
-                modalHtml += `<p class="text-sm text-gray-500">No specific reasons provided.</p>`;
-            }
-            
-            modalHtml += `
+                if (!result.success) {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+                
+                const activity = result.data;
+                const riskScore = activity.risk_score * 100;
+                
+                // Format activity data safely
+                const activityData = activity.activity_data || {};
+                const user = activity.user || {};
+                const reviewer = activity.reviewer || {};
+                const detectionReasons = Array.isArray(activity.detection_reasons) ? activity.detection_reasons : [];
+                
+                let modalHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- User Info -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-900 mb-2">User Information</h4>
+                            <p class="text-sm text-gray-600"><strong>Name:</strong> ${user.name || 'Unknown'}</p>
+                            <p class="text-sm text-gray-600"><strong>Email:</strong> ${user.email || 'N/A'}</p>
+                            <p class="text-sm text-gray-600"><strong>User ID:</strong> ${activity.user_id}</p>
+                        </div>
+                        
+                        <!-- Activity Info -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-900 mb-2">Activity Information</h4>
+                            <p class="text-sm text-gray-600"><strong>Type:</strong> ${(activity.activity_type || '').replace(/_/g, ' ')}</p>
+                            <p class="text-sm text-gray-600"><strong>Status:</strong> <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColorClass(activity.status)}">${(activity.status || '').replace(/_/g, ' ')}</span></p>
+                            <p class="text-sm text-gray-600"><strong>Risk Score:</strong> <span class="font-semibold ${getRiskColorClass(riskScore)}">${riskScore.toFixed(1)}%</span></p>
+                        </div>
+                        
+                        <!-- Location Info -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-900 mb-2">Location Information</h4>
+                            <p class="text-sm text-gray-600"><strong>IP Address:</strong> ${activityData.ip_address || 'N/A'}</p>
+                            <p class="text-sm text-gray-600"><strong>Location:</strong> ${activityData.location || 'Unknown'}</p>
+                            <p class="text-sm text-gray-600"><strong>Device:</strong> ${activityData.device || 'Unknown'} (${activityData.browser || 'Unknown'})</p>
+                        </div>
+                        
+                        <!-- Timestamps -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-900 mb-2">Timestamps</h4>
+                            <p class="text-sm text-gray-600"><strong>Detected:</strong> ${formatDate(activity.created_at)}</p>
+                            ${activity.reviewed_at ? `<p class="text-sm text-gray-600"><strong>Reviewed:</strong> ${formatDate(activity.reviewed_at)}</p>` : ''}
+                            ${reviewer.name ? `<p class="text-sm text-gray-600"><strong>Reviewed By:</strong> ${reviewer.name}</p>` : ''}
+                        </div>
                     </div>
-                </div>
-            `;
-            
-            // Add review notes if available
-            if (activity.review_notes) {
-                modalHtml += `
+                    
+                    <!-- Detection Reasons -->
                     <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-900 mb-2">Review Notes</h4>
-                        <p class="text-sm text-gray-600">${activity.review_notes}</p>
-                    </div>
+                        <h4 class="font-medium text-gray-900 mb-2">Detection Reasons</h4>
+                        <div class="flex flex-wrap gap-2">
                 `;
-            }
-            
-            // Add quick actions for pending activities
-            if (activity.status === 'pending') {
+                
+                if (detectionReasons.length > 0) {
+                    detectionReasons.forEach(reason => {
+                        modalHtml += `<span class="inline-block bg-white px-3 py-1 rounded-full text-xs text-gray-700 border">${reason}</span>`;
+                    });
+                } else {
+                    modalHtml += `<p class="text-sm text-gray-500">No specific reasons provided.</p>`;
+                }
+                
                 modalHtml += `
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-blue-900 mb-2">Quick Actions</h4>
-                        <div class="flex space-x-2">
-                            <form action="/admin/suspicious-activities/${activityId}" method="POST" class="inline">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="PUT">
-                                <input type="hidden" name="status" value="reviewed">
-                                <button type="submit" onclick="return confirm('Mark this activity as reviewed?')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                                    Mark as Reviewed
-                                </button>
-                            </form>
-                            <form action="/admin/suspicious-activities/${activityId}" method="POST" class="inline">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="PUT">
-                                <input type="hidden" name="status" value="false_positive">
-                                <button type="submit" onclick="return confirm('Mark this activity as false positive?')" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
-                                    Mark as False Positive
-                                </button>
-                            </form>
                         </div>
                     </div>
                 `;
+                
+                // Add review notes if available
+                if (activity.review_notes) {
+                    modalHtml += `
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-900 mb-2">Review Notes</h4>
+                            <p class="text-sm text-gray-600">${activity.review_notes}</p>
+                        </div>
+                    `;
+                }
+                
+                // Add quick actions for pending activities
+                if (activity.status === 'pending') {
+                    modalHtml += `
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-blue-900 mb-2">Quick Actions</h4>
+                            <div class="flex space-x-2">
+                                <form action="/admin/suspicious-activities/${activityId}" method="POST" class="inline">
+                                    <input type="hidden" name="_token" value="${csrfToken}">
+                                    <input type="hidden" name="_method" value="PUT">
+                                    <input type="hidden" name="status" value="reviewed">
+                                    <button type="submit" onclick="return confirm('Mark this activity as reviewed?')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                                        Mark as Reviewed
+                                    </button>
+                                </form>
+                                <form action="/admin/suspicious-activities/${activityId}" method="POST" class="inline">
+                                    <input type="hidden" name="_token" value="${csrfToken}">
+                                    <input type="hidden" name="_method" value="PUT">
+                                    <input type="hidden" name="status" value="false_positive">
+                                    <button type="submit" onclick="return confirm('Mark this activity as false positive?')" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
+                                        Mark as False Positive
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('modalContent').innerHTML = modalHtml;
+            })
+            .catch(error => {
+                console.error('Error details:', error);
+                document.getElementById('modalContent').innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-500">Error loading activity details.</p>
+                        <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                        <p class="text-xs text-gray-400 mt-1">Check browser console for more details.</p>
+                        <button onclick="retryLoad(${activityId})" class="mt-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        
+        // Helper functions
+        function getStatusColorClass(status) {
+            const colors = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'reviewed': 'bg-blue-100 text-blue-800',
+                'resolved': 'bg-green-100 text-green-800',
+                'false_positive': 'bg-gray-100 text-gray-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+        
+        function getRiskColorClass(score) {
+            if (score >= 80) return 'text-red-600';
+            if (score >= 60) return 'text-yellow-600';
+            return 'text-green-600';
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString();
+            } catch (e) {
+                return dateString;
             }
-            
-            document.getElementById('modalContent').innerHTML = modalHtml;
-        })
-        .catch(error => {
-            console.error('Error details:', error);
-            document.getElementById('modalContent').innerHTML = `
-                <div class="text-center py-8">
-                    <p class="text-red-500">Error loading activity details.</p>
-                    <p class="text-sm text-gray-500 mt-2">${error.message}</p>
-                    <p class="text-xs text-gray-400 mt-1">Check browser console for more details.</p>
-                    <button onclick="retryLoad(${activityId})" class="mt-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200">
-                        Retry
-                    </button>
-                </div>
-            `;
+        }
+        
+        function retryLoad(activityId) {
+            showActivityDetails(activityId);
+        }
+        
+        function closeModal() {
+            document.getElementById('activityModal').classList.add('hidden');
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('activityModal').addEventListener('click', function(e) {
+            if (e.target.id === 'activityModal') {
+                closeModal();
+            }
         });
-    }
-    
-    // Helper functions
-    function getStatusColorClass(status) {
-        const colors = {
-            'pending': 'bg-yellow-100 text-yellow-800',
-            'reviewed': 'bg-blue-100 text-blue-800',
-            'resolved': 'bg-green-100 text-green-800',
-            'false_positive': 'bg-gray-100 text-gray-800'
-        };
-        return colors[status] || 'bg-gray-100 text-gray-800';
-    }
-    
-    function getRiskColorClass(score) {
-        if (score >= 80) return 'text-red-600';
-        if (score >= 60) return 'text-yellow-600';
-        return 'text-green-600';
-    }
-    
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleString();
-        } catch (e) {
-            return dateString;
-        }
-    }
-    
-    function retryLoad(activityId) {
-        showActivityDetails(activityId);
-    }
-    
-    function closeModal() {
-        document.getElementById('activityModal').classList.add('hidden');
-    }
-    
-    // Close modal when clicking outside
-    document.getElementById('activityModal').addEventListener('click', function(e) {
-        if (e.target.id === 'activityModal') {
-            closeModal();
-        }
-    });
-</script>
+    </script>
 </x-app-layout>

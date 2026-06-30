@@ -1,5 +1,31 @@
 <x-app-layout>
-    <div class="flex h-screen bg-gray-50 overflow-hidden" x-data="{ sidebarOpen: false }">
+    <x-slot name="header">
+        <style>
+            /* Prevent double scrollbars - only main content scrolls */
+            html, body {
+                overflow: hidden !important;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            /* Ensure the app layout container doesn't add extra scroll */
+            .app-layout-container {
+                height: 100vh;
+                overflow: hidden;
+            }
+            /* Ensure sidebar doesn't cause horizontal scroll */
+            aside {
+                overflow-x: hidden;
+            }
+        </style>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Dashboard') }}
+            </h2>
+        </div>
+    </x-slot>
+
+    <div class="flex h-screen bg-gray-50 overflow-hidden app-layout-container" x-data="{ sidebarOpen: false }" style="height: 100vh; max-height: 100vh;">
         <!-- Mobile Sidebar Overlay -->
         <div x-show="sidebarOpen" @click="sidebarOpen = false" 
              class="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden"
@@ -15,7 +41,7 @@
 
         <!-- Sidebar -->
         <aside 
-            class="fixed inset-y-0 left-0 z-40 w-72 bg-gray-900 text-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex-shrink-0 overflow-y-auto"
+            class="fixed inset-y-0 left-0 z-40 w-72 bg-gray-900 text-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex-shrink-0 overflow-y-auto overflow-x-hidden"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
         >
             <!-- Sidebar Header -->
@@ -44,7 +70,7 @@
                 </a>
 
                 <a href="{{ route('admin.security-logs') }}" 
-                   class="flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700">
+                   class="flex items-center px-4 py-3 rounded-lg {{ request()->routeIs('admin.security-logs') ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
@@ -101,7 +127,7 @@
         </div>
 
         <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8 w-full max-w-7xl mx-auto">
+        <main class="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8 w-full max-w-7xl mx-auto" style="overflow-y: auto; height: 100vh;">
             <!-- Page Header with Stats Bar -->
             <div class="mb-6 md:mb-8">
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
